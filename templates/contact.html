@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Contact & Veterinary Feedback — PoultryScan AI{% endblock %}
+{% block page_title %}Contact & Feedback{% endblock %}
+
+{% block content %}
+
+<div style="max-width: 900px; margin: 0 auto;">
+  
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="color: #0f5132; font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem;">
+      Contact & Veterinary Collaboration
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 600px; margin: 0 auto; line-height: 1.5;">
+      Have a question regarding PoultryScan AI, diagnostic model performance, dataset contributions, or smart farm integration? Send us your message.
+    </p>
+  </div>
+
+  <div class="grid grid-2" style="gap: 2rem; margin-bottom: 2.5rem;">
+    
+    <!-- Contact Form -->
+    <div class="card" style="background: #ffffff; padding: 2rem; border: 1px solid #e2e8f0;">
+      <h3 style="color: #0f5132; font-size: 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>✉️</span> Send a Message / Feedback
+      </h3>
+
+      <form action="{{ url_for('contact') }}" method="POST">
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-weight: 600; font-size: 0.875rem; color: #334155; margin-bottom: 0.35rem;">
+            Your Name / Farm Name
+          </label>
+          <input type="text" name="name" required placeholder="e.g. Dr. Ramesh / GreenValley Poultry Farm"
+                 style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-family: inherit; font-size: 0.9rem;">
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-weight: 600; font-size: 0.875rem; color: #334155; margin-bottom: 0.35rem;">
+            Email Address
+          </label>
+          <input type="email" name="email" required placeholder="name@poultryfarm.com"
+                 style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-family: inherit; font-size: 0.9rem;">
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-weight: 600; font-size: 0.875rem; color: #334155; margin-bottom: 0.35rem;">
+            Category
+          </label>
+          <select name="category" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-family: inherit; font-size: 0.9rem; background: #ffffff;">
+            <option value="Model Feedback">Model Diagnostic Accuracy Feedback</option>
+            <option value="New Disease Suggestion">New Pathology Dataset Contribution</option>
+            <option value="Farm Integration">Commercial Farm IoT Integration</option>
+            <option value="Veterinary Consultation">Veterinary Consultation / Collaboration</option>
+            <option value="General Inquiry">General Inquiries</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; font-size: 0.875rem; color: #334155; margin-bottom: 0.35rem;">
+            Message / Observation
+          </label>
+          <textarea name="message" rows="4" required placeholder="Describe clinical symptoms observed, flock size, or feedback on prediction accuracy..."
+                    style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #cbd5e1; border-radius: var(--radius-md); font-family: inherit; font-size: 0.9rem; resize: vertical;"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+          <span>📨</span>
+          <span>Submit Feedback</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Contact Info & Emergency Guidance -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="card" style="background: #ffffff; padding: 1.75rem; border: 1px solid #e2e8f0;">
+        <h3 style="color: #0f5132; font-size: 1.15rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🏢</span> System Development & Research
+        </h3>
+        <p style="font-size: 0.875rem; color: #475569; line-height: 1.6; margin-bottom: 1rem;">
+          PoultryScan AI is an engineering project focusing on precision agriculture, computer vision, and veterinary diagnostics.
+        </p>
+        <div style="font-size: 0.85rem; color: #334155; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div><strong>Department:</strong> CSE (Artificial Intelligence & Machine Learning)</div>
+          <div><strong>Frameworks:</strong> Python · TensorFlow · Flask · SQLite</div>
+          <div><strong>Model Support:</strong> 5 Verified Disease Categories</div>
+        </div>
+      </div>
+
+      <div class="card" style="background: #fef2f2; border: 1px solid #fecaca; padding: 1.75rem;">
+        <h3 style="color: #991b1b; font-size: 1.15rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🚨</span> Notifiable Disease Protocol
+        </h3>
+        <p style="font-size: 0.85rem; color: #7f1d1d; line-height: 1.5; margin-bottom: 0.75rem;">
+          If your flock exhibits signs of acute velogenic Newcastle Disease or Avian Influenza (sudden massive mortality, cyanotic combs, torticollis, dyspnea):
+        </p>
+        <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.825rem; color: #7f1d1d; line-height: 1.5;">
+          <li>Immediately isolate the affected shed.</li>
+          <li>Enforce strict farm gate lockdown (no bird or litter movement).</li>
+          <li>Notify local government agricultural and veterinary disease control authorities.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

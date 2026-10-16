@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Poultry Disease Encyclopedia — 5 Active Classes{% endblock %}
+{% block page_title %}Avian Pathology Reference{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div style="margin-bottom: 2rem;">
+  <h2 style="color: #0f5132; font-size: 1.85rem; font-weight: 800; margin-bottom: 0.5rem;">
+    Poultry Disease Encyclopedia & Clinical Guide
+  </h2>
+  <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 850px; line-height: 1.5;">
+    Comprehensive veterinary documentation covering avian illnesses. Features <strong>5 active deep learning classes</strong> 
+    (Coccidiosis, Fowl Pox, Healthy Chicken, Newcastle Disease, Salmonella) with complete pathognomonic symptoms, 
+    prevention biosecurity, and recommended clinical next steps.
+  </p>
+
+  <!-- Filter & Quick Jump Tabs -->
+  <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; align-items: center;">
+    <button class="filter-btn active" onclick="filterCatalog('all', this)">
+      All Pathologies (14)
+    </button>
+    <button class="filter-btn" onclick="filterCatalog('active', this)">
+      ✅ 5 Active Model Predictions
+    </button>
+    <button class="filter-btn" onclick="filterCatalog('reference', this)">
+      📚 Educational Reference Catalog (9)
+    </button>
+  </div>
+</div>
+
+<!-- Disease Cards Container -->
+<div style="display: flex; flex-direction: column; gap: 2rem;" id="diseaseCatalog">
+  {% for name, d in diseases.items() %}
+    {% if name != 'New Castle Disease' %}
+    <section id="{{ name|lower|replace(' ', '-')|replace('’', '')|replace('/', '-') }}"
+             class="disease-card {{ 'active-model-card' if d.model_supported else 'reference-model-card' }}"
+             data-category="{{ 'active' if d.model_supported else 'reference' }}"
+             style="background: #ffffff; border: 1px solid {{ '#bbf7d0' if d.model_supported else '#e2e8f0' }}; border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-sm);">
+      
+      <!-- Card Header -->
+      <div class="disease-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; flex-wrap: wrap;">
+            {% if d.model_supported %}
+              <span class="badge badge-success">✓ Active 5-Class Deep Learning</span>
+            {% else %}
+              <span class="badge badge-info">📚 Educational Reference (Catalog)</span>
+            {% endif %}
+            <span class="badge badge-{{ d.badge }}">{{ d.severity }}</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Pathogen: {{ d.pathogen_type }}</span>
+          </div>
+
+          <h2 style="display: flex; align-items: center; gap: 0.75rem; font-size: 1.6rem; color: #0f5132; margin: 0;">
+            <span>{{ d.icon }}</span>
+            <span>{{ d.name }}</span>
+          </h2>
+          <p style="font-size: 0.9rem; color: #64748b; margin-top: 0.25rem;">
+            Taxonomic Classification: <em>{{ d.scientific_name }}</em>
+          </p>
+        </div>
+
+        {% if d.model_supported %}
+          <a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm">
+            <span>🔬</span>
+            <span>Analyze Image for {{ name }}</span>
+          </a>
+        {% endif %}
+      </div>
+
+      <!-- Clinical Summary -->
+      <p style="font-size: 0.95rem; color: #334155; line-height: 1.6; margin-bottom: 1.5rem;">
+        {{ d.summary }}
+      </p>
+
+      <!-- Three Pillars Grid: Symptoms, Prevention, Recommendation -->
+      <div class="grid grid-3" style="gap: 1.5rem; margin-bottom: 1.5rem;">
+        
+        <!-- 1. Symptoms Card -->
+        <div style="background: #f8fafc; padding: 1.25rem; border-radius: var(--radius-md); border-top: 3px solid #dc3545;">
+          <h4 style="font-size: 0.95rem; color: #991b1b; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🩺</span> Clinical Symptoms
+          </h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #334155; line-height: 1.5;">
+            {% for sym in d.symptoms %}
+              <li style="margin-bottom: 0.35rem;">{{ sym }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- 2. Prevention Card -->
+        <div style="background: #f8fafc; padding: 1.25rem; border-radius: var(--radius-md); border-top: 3px solid #198754;">
+          <h4 style="font-size: 0.95rem; color: #166534; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🛡️</span> Prevention & Biosecurity
+          </h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #334155; line-height: 1.5;">
+            {% for prev in d.prevention %}
+              <li style="margin-bottom: 0.35rem;">{{ prev }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- 3. Recommended Next Steps -->
+        <div style="background: #f8fafc; padding: 1.25rem; border-radius: var(--radius-md); border-top: 3px solid #0d6efd;">
+          <h4 style="font-size: 0.95rem; color: #075985; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋</span> Recommended Action Steps
+          </h4>
+          <p style="font-size: 0.85rem; color: #334155; line-height: 1.6; margin: 0;">
+            {{ d.recommendation }}
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Specific Morphological Signs -->
+      <div style="background: #f1f5f9; padding: 1.15rem; border-radius: var(--radius-md); font-size: 0.85rem; color: #475569; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div>
+          <strong style="color: #0f5132;">Head & Facial Signs:</strong>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.825rem;">{{ d.head_signs }}</p>
+        </div>
+        <div>
+          <strong style="color: #0f5132;">Body & Plumage Signs:</strong>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.825rem;">{{ d.body_signs }}</p>
+        </div>
+        <div>
+          <strong style="color: #0f5132;">Fecal & Vent Characteristics:</strong>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.825rem;">{{ d.fecal_signs }}</p>
+        </div>
+      </div>
+
+    </section>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function filterCatalog(category, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('#diseaseCatalog section').forEach(card => {
+      const cardCat = card.getAttribute('data-category');
+      if (category === 'all' || cardCat === category) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+</script>
+{% endblock %}

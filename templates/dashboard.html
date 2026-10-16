@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Dashboard Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h2>Real-Time Prediction Analytics</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Continuous monitoring and distribution metrics across all poultry diagnostic scans.</p>
+  </div>
+  <div style="display: flex; align-items: center; gap: 0.5rem; background: #ffffff; padding: 0.4rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border);">
+    <span class="status-dot"></span>
+    <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">Live Sync (5s)</span>
+  </div>
+</div>
+
+<!-- 4 KPI Stat Cards -->
+<div class="grid grid-4" style="margin-bottom: 2rem;">
+  <div class="kpi-card">
+    <div class="kpi-icon blue">📊</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Total Predictions</span>
+      <span class="kpi-value" id="statTotal" data-count="{{ total }}">{{ total }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon red">🦠</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Diseases Detected</span>
+      <span class="kpi-value" id="statDiseased" data-count="{{ diseased }}">{{ diseased }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon green">✅</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Healthy Droppings</span>
+      <span class="kpi-value" id="statHealthy" data-count="{{ counts['Healthy'] }}">{{ counts['Healthy'] }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon green">🎯</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Avg. Confidence</span>
+      <span class="kpi-value"><span id="statAvg" data-count="{{ avg }}">{{ avg }}</span>%</span>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid grid-2" style="margin-bottom: 2rem;">
+  <!-- Doughnut Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><span>🥧</span> Disease Distribution Ratio</h3>
+    </div>
+    {% if total == 0 %}
+      <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);" id="emptyChart">
+        <p>No predictions recorded yet.</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">Run First Scan</a>
+      </div>
+    {% endif %}
+    <div style="height: 280px; position: relative;" id="chartBox" {% if total == 0 %}style="display:none;"{% endif %}>
+      <canvas id="doughnutChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><span>📊</span> Total Cases per Classification</h3>
+    </div>
+    <div style="height: 280px; position: relative;" id="chartBox2" {% if total == 0 %}style="display:none;"{% endif %}>
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Model Evaluation Benchmark — sourced from evaluation_summary.json -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">
+    <h3 class="card-title"><span>🏆</span> Model Evaluation Benchmark (Held-Out Test Dataset)</h3>
+    {% if eval_data %}
+      <span class="badge badge-success">{{ eval_data.total_test_samples }} Test Samples · {{ eval_data.evaluation_date }}</span>
+    {% else %}
+      <span class="badge badge-warning">Evaluation Pending</span>
+    {% endif %}
+  </div>
+
+  {% if eval_data %}
+  {% set cr = eval_data.classification_report %}
+  <div class="grid grid-4" style="margin-top: 0.5rem;">
+    <div style="background: var(--bg-muted); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+      <span style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Overall Accuracy</span>
+      <h3 style="color: var(--primary); font-size: 1.6rem; margin-top: 0.25rem;">{{ "%.2f"|format(eval_data.overall_accuracy) }}%</h3>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">Model: {{ eval_data.model_version }}</span>
+    </div>
+    <div style="background: var(--bg-muted); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+      <span style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Macro Precision</span>
+      <h3 style="color: var(--text-main); font-size: 1.6rem; margin-top: 0.25rem;">{{ "%.1f"|format(cr['macro avg']['precision'] * 100) }}%</h3>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">Macro avg across 5 classes</span>
+    </div>
+    <div style="background: var(--bg-muted); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+      <span style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Macro Recall</span>
+      <h3 style="color: var(--text-main); font-size: 1.6rem; margin-top: 0.25rem;">{{ "%.1f"|format(cr['macro avg']['recall'] * 100) }}%</h3>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">Sensitivity across 5 classes</span>
+    </div>
+    <div style="background: var(--bg-muted); padding: 1rem; border-radius: var(--radius-md); text-align: center;">
+      <span style="font-size: 0.775rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Macro F1-Score</span>
+      <h3 style="color: var(--text-main); font-size: 1.6rem; margin-top: 0.25rem;">{{ "%.1f"|format(cr['macro avg']['f1-score'] * 100) }}%</h3>
+      <span style="font-size: 0.75rem; color: var(--text-muted);">Harmonic mean P/R</span>
+    </div>
+  </div>
+
+  <!-- Per-class breakdown -->
+  <div style="margin-top: 1.25rem; overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+      <thead>
+        <tr style="background: #f1f5f9; text-align: left;">
+          <th style="padding: 0.6rem 0.75rem;">Class</th>
+          <th style="padding: 0.6rem 0.75rem;">Precision</th>
+          <th style="padding: 0.6rem 0.75rem;">Recall</th>
+          <th style="padding: 0.6rem 0.75rem;">F1-Score</th>
+          <th style="padding: 0.6rem 0.75rem;">Test Samples</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cls in eval_data.classes %}
+        {% set row = cr[cls] %}
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 0.6rem 0.75rem; font-weight: 600;">{{ cls }}</td>
+          <td style="padding: 0.6rem 0.75rem;">{{ "%.1f"|format(row.precision * 100) }}%</td>
+          <td style="padding: 0.6rem 0.75rem;">{{ "%.1f"|format(row.recall * 100) }}%</td>
+          <td style="padding: 0.6rem 0.75rem;">{{ "%.1f"|format(row['f1-score'] * 100) }}%</td>
+          <td style="padding: 0.6rem 0.75rem;">{{ row.support|int }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="font-size: 0.775rem; color: var(--text-muted); margin-top: 0.5rem;">
+      Source: <code>evaluation_results/evaluation_summary.json</code> · Zero data-leakage verified · Preprocessing: pixel rescale [0, 1]
+    </p>
+  </div>
+
+  {% else %}
+  <div style="padding: 1.5rem; text-align: center; color: var(--text-muted);">
+    <p>⏳ Evaluation report not available. Run <code>python evaluate_model.py</code> to generate metrics.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Recent Scans Table -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><span>🕒</span> Recent Diagnosis Activity</h3>
+    <a href="{{ url_for('history') }}" class="btn btn-outline btn-sm">Full History &rarr;</a>
+  </div>
+
+  {% if history %}
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Sample</th>
+          <th>Predicted Condition</th>
+          <th>Confidence</th>
+          <th>Timestamp</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in history %}
+        <tr>
+          <td><strong>#{{ p.id }}</strong></td>
+          <td>
+            <img class="table-thumb" src="{{ url_for('uploaded_file', filename=p.filename) }}" alt="Thumbnail">
+          </td>
+          <td>
+            <span class="badge {{ 'badge-success' if p.disease == 'Healthy' else ('badge-warning' if p.disease == 'Coccidiosis' else 'badge-danger') }}">
+              {{ p.disease }}
+            </span>
+            {% if p.is_uncertain %}<span class="badge badge-warning">Uncertain</span>{% endif %}
+          </td>
+          <td>
+            <strong>{{ '%.1f'|format(p.confidence) }}%</strong>
+          </td>
+          <td style="color: var(--text-muted); font-size: 0.8rem;">
+            {{ p.created_at }}
+          </td>
+          <td>
+            {% if p['scan_mode'] == 'flock' %}
+              <a href="{{ url_for('flock_result', pred_id=p.id) }}" class="btn btn-ghost btn-sm">View Flock</a>
+            {% else %}
+              <a href="{{ url_for('result', pred_id=p.id) }}" class="btn btn-ghost btn-sm">View Report</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p style="text-align: center; color: var(--text-muted); padding: 2rem;">No scans recorded in the database yet.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  window.DASH = {
+    counts: {{ counts|tojson }},
+    lastId: {{ history[0].id if history else 0 }},
+    statsUrl: "{{ url_for('api_stats') }}"
+  };
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

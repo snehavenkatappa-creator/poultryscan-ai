@@ -1,0 +1,77 @@
+{
+  "audit_date": "2026-10-14",
+  "auditor": "PoultryScan AI Research Audit",
+  "models": [
+    {
+      "id": "primary",
+      "filename": "model/poultry_disease_model.keras",
+      "size_mb": 21.69,
+      "keras_version": "3.14.0",
+      "date_saved": "2026-10-14T13:07:04",
+      "architecture": "MobileNetV2 + GlobalAveragePooling2D + Dropout(0.35) + Dense(5, softmax)",
+      "input_shape": [
+        null,
+        224,
+        224,
+        3
+      ],
+      "output_shape": [
+        null,
+        5
+      ],
+      "num_classes": 5,
+      "class_indices": [
+        "Coccidiosis",
+        "Fowl Pox",
+        "Healthy",
+        "Newcastle Disease",
+        "Salmonella"
+      ],
+      "preprocessing": "RGB, bilinear resize to 224x224, pixel / 255.0 -> [0.0, 1.0]",
+      "fine_tuning": "Top 35 layers of MobileNetV2 unfrozen in Phase 2",
+      "used_by": [
+        "head_face mode",
+        "full_body mode"
+      ],
+      "note": "Single model serves both examination modes. No separate head/face model exists."
+    },
+    {
+      "id": "backup_4class",
+      "filename": "model/poultry_disease_model_4class_backup.keras",
+      "size_mb": 9.23,
+      "keras_version": "3.14.0",
+      "date_saved": "2026-08-03T18:28:07",
+      "architecture": "MobileNetV2 + Dense(4, softmax)",
+      "input_shape": [
+        null,
+        224,
+        224,
+        3
+      ],
+      "output_shape": [
+        null,
+        4
+      ],
+      "num_classes": 4,
+      "class_indices": "UNKNOWN - no class_indices.json paired with this file",
+      "preprocessing": "Likely same as primary (not verified without training log)",
+      "used_by": "NOT loaded by app.py - retired backup",
+      "note": "Pre-dates Fowl Pox class addition. Class order unknown without paired training artifacts."
+    },
+    {
+      "id": "efficientnet_zip",
+      "filename": "model/New folder/efficientnet_poultry.keras.zip",
+      "size_mb": 18.13,
+      "date_saved": "UNKNOWN",
+      "architecture": "EfficientNet (details unavailable - ZIP not extracted)",
+      "input_shape": "UNKNOWN",
+      "output_shape": "UNKNOWN",
+      "class_indices": "UNKNOWN",
+      "used_by": "NOT loaded by app.py",
+      "note": "Compressed and not extracted. Cannot be audited without unzipping. Not currently active."
+    }
+  ],
+  "active_model": "primary",
+  "single_model_both_modes": true,
+  "finding": "Contrary to the website description implying mode-specific models, only one model (poultry_disease_model.keras) is loaded by app.py and used for both head/face and full_body examination modes."
+}

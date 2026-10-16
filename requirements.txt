@@ -1,0 +1,35 @@
+# ==============================================================
+# PoultryScan AI — Production Requirements
+# Pinned for Python 3.11 + Hugging Face Spaces Docker deployment
+# ==============================================================
+
+# Web framework & production WSGI server
+Flask==3.0.3
+Werkzeug==3.0.4
+gunicorn==22.0.0
+
+# Image processing
+Pillow==10.4.0
+
+# Numerical computing
+numpy==1.26.4
+
+# Deep learning — TensorFlow / Keras (CPU, avoids pulling heavy GPU deps)
+# tensorflow-cpu is lighter and works identically for inference
+tensorflow-cpu==2.16.2
+keras==3.5.0
+
+# PyTorch CPU is installed separately in the Dockerfile from the CPU wheel index.
+# The lines below are placeholders that pip will skip when torch is already
+# installed (they define the minimum version floor only for local dev installs).
+torch>=2.3.1
+torchvision>=0.18.1
+
+# Machine-learning utilities (scikit-learn used by evaluation; not runtime critical)
+scikit-learn==1.5.2
+
+# Visualization (used in about page for evaluation metrics)
+matplotlib==3.9.2
+
+# OpenCV (headless — no display needed on a server)
+opencv-python-headless==4.10.0.84

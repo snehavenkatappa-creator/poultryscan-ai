@@ -1,0 +1,165 @@
+{
+  "model_version": "MobileNetV2-5Class-v2.1",
+  "evaluation_timestamp": "2026-10-15 11:14:41",
+  "evaluation_date": "October 15, 2026",
+  "overall_accuracy": 91.32,
+  "total_test_samples": 242,
+  "preprocessing": "rescale",
+  "classes": [
+    "Coccidiosis",
+    "Fowl Pox",
+    "Healthy",
+    "Newcastle Disease",
+    "Salmonella"
+  ],
+  "support_per_class": {
+    "Coccidiosis": 56,
+    "Fowl Pox": 28,
+    "Healthy": 60,
+    "Newcastle Disease": 38,
+    "Salmonella": 60
+  },
+  "per_class_accuracy": {
+    "Coccidiosis": 94.64,
+    "Fowl Pox": 100.0,
+    "Healthy": 93.33,
+    "Newcastle Disease": 89.47,
+    "Salmonella": 83.33
+  },
+  "classification_report": {
+    "Coccidiosis": {
+      "precision": 1.0,
+      "recall": 0.9464285714285714,
+      "f1-score": 0.9724770642201835,
+      "support": 56.0
+    },
+    "Fowl Pox": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 28.0
+    },
+    "Healthy": {
+      "precision": 0.8484848484848485,
+      "recall": 0.9333333333333333,
+      "f1-score": 0.8888888888888888,
+      "support": 60.0
+    },
+    "Newcastle Disease": {
+      "precision": 0.8292682926829268,
+      "recall": 0.8947368421052632,
+      "f1-score": 0.8607594936708861,
+      "support": 38.0
+    },
+    "Salmonella": {
+      "precision": 0.9259259259259259,
+      "recall": 0.8333333333333334,
+      "f1-score": 0.8771929824561403,
+      "support": 60.0
+    },
+    "accuracy": 0.9132231404958677,
+    "macro avg": {
+      "precision": 0.9207358134187402,
+      "recall": 0.9215664160401003,
+      "f1-score": 0.9198636858472197,
+      "support": 242.0
+    },
+    "weighted avg": {
+      "precision": 0.9172596759776764,
+      "recall": 0.9132231404958677,
+      "f1-score": 0.9137706142005195,
+      "support": 242.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      53,
+      0,
+      1,
+      2,
+      0
+    ],
+    [
+      0,
+      28,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      56,
+      2,
+      2
+    ],
+    [
+      0,
+      0,
+      2,
+      34,
+      2
+    ],
+    [
+      0,
+      0,
+      7,
+      3,
+      50
+    ]
+  ],
+  "confused_pairs": [
+    {
+      "true_class": "Salmonella",
+      "predicted_as": "Healthy",
+      "misclassified_count": 7,
+      "description": "7 sample(s) of 'Salmonella' misclassified as 'Healthy'"
+    },
+    {
+      "true_class": "Salmonella",
+      "predicted_as": "Newcastle Disease",
+      "misclassified_count": 3,
+      "description": "3 sample(s) of 'Salmonella' misclassified as 'Newcastle Disease'"
+    },
+    {
+      "true_class": "Coccidiosis",
+      "predicted_as": "Newcastle Disease",
+      "misclassified_count": 2,
+      "description": "2 sample(s) of 'Coccidiosis' misclassified as 'Newcastle Disease'"
+    },
+    {
+      "true_class": "Healthy",
+      "predicted_as": "Newcastle Disease",
+      "misclassified_count": 2,
+      "description": "2 sample(s) of 'Healthy' misclassified as 'Newcastle Disease'"
+    },
+    {
+      "true_class": "Healthy",
+      "predicted_as": "Salmonella",
+      "misclassified_count": 2,
+      "description": "2 sample(s) of 'Healthy' misclassified as 'Salmonella'"
+    },
+    {
+      "true_class": "Newcastle Disease",
+      "predicted_as": "Healthy",
+      "misclassified_count": 2,
+      "description": "2 sample(s) of 'Newcastle Disease' misclassified as 'Healthy'"
+    },
+    {
+      "true_class": "Newcastle Disease",
+      "predicted_as": "Salmonella",
+      "misclassified_count": 2,
+      "description": "2 sample(s) of 'Newcastle Disease' misclassified as 'Salmonella'"
+    },
+    {
+      "true_class": "Coccidiosis",
+      "predicted_as": "Healthy",
+      "misclassified_count": 1,
+      "description": "1 sample(s) of 'Coccidiosis' misclassified as 'Healthy'"
+    }
+  ],
+  "data_leakage": {
+    "verified_zero_leakage": true,
+    "duplicates_detected": 0
+  }
+}

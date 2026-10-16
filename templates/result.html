@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Diagnosis Result: {{ pred.disease }} ({{ '%.2f'|format(pred.confidence) }}%){% endblock %}
+{% block page_title %}Diagnostic Report #{{ pred.id }}{% endblock %}
+
+{% block content %}
+
+<!-- Low Confidence / Uncertainty Advisory Alert -->
+{% if pred.is_uncertain %}
+<div class="flash flash-warning" role="alert" style="margin-bottom: 1.5rem; border-left: 5px solid #d97706; padding: 1.25rem; background: #fffbeb; border-radius: var(--radius-md);">
+  <div>
+    <h3 style="color: #b45309; font-size: 1.15rem; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span>⚠️</span> Low Diagnostic Certainty Advisory
+    </h3>
+    <p style="margin: 0; font-size: 0.9rem; color: #78350f; line-height: 1.5;">
+      {{ uncertain_advisory }}
+    </p>
+    <div style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.7); border-radius: var(--radius-sm); font-size: 0.85rem; color: #78350f; line-height: 1.5;">
+      <strong>Veterinary Screening Guidance:</strong> The model detected an ambiguous feature distribution or low confidence margin. Please take a clearer, closer photograph in good lighting or consult an avian veterinary specialist for physical examination and microbiological/PCR assays.
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Diagnostic Header Banner -->
+<div class="result-header-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+      <span class="badge badge-{{ info.badge }}">{{ info.severity }}</span>
+      <span class="badge badge-info">{{ image_type_label }}</span>
+      <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Record ID: #{{ pred.id }}</span>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">· {{ pred.created_at }}</span>
+    </div>
+    <h1 style="display: flex; align-items: center; gap: 0.75rem; font-size: 2.2rem; color: #0f5132; margin: 0; flex-wrap: wrap;">
+      <span>{{ info.icon }}</span>
+      <span>{{ pred.disease }}</span>
+    </h1>
+    <p style="color: #64748b; font-size: 0.95rem; margin-top: 0.35rem;">
+      Pathology Classification: <em>{{ info.scientific_name }}</em> · Etiology: <strong>{{ info.pathogen_type }}</strong>
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+    <button onclick="window.print()" class="btn btn-outline btn-sm">
+      <span>🖨️</span>
+      <span>Print Report</span>
+    </button>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm">
+      <span>🔬</span>
+      <span>Analyze Another Image</span>
+    </a>
+  </div>
+</div>
+
+<!-- Main Diagnostic Grid -->
+<div class="result-main-grid" style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 2rem; margin-bottom: 2rem;">
+  
+  <!-- Left Column: Uploaded Specimen & Technical Metadata -->
+  <div>
+    <div class="card" style="background: #ffffff; padding: 1.25rem;">
+      <h3 style="font-size: 1.1rem; color: #0f5132; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>🖼️</span> Analyzed Specimen Image
+      </h3>
+      <div style="border-radius: var(--radius-md); overflow: hidden; border: 1px solid #e2e8f0; background: #000000; text-align: center;">
+        <img src="{{ url_for('uploaded_file', filename=pred.filename) }}" 
+             alt="Uploaded specimen photograph" 
+             style="max-width: 100%; max-height: 380px; object-fit: contain; display: block; margin: 0 auto;">
+      </div>
+      
+      <div style="margin-top: 1rem;">
+        <h4 style="font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Inference Pipeline Specifications</h4>
+        <div class="meta-pill-group" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <span class="meta-pill">Mode: {{ image_type_label }}</span>
+          <span class="meta-pill">Input: 224 &times; 224 RGB</span>
+          <span class="meta-pill">Normalization: [0.0, 1.0] Rescale</span>
+          <span class="meta-pill">Architecture: MobileNetV2 (5 Classes)</span>
+          <span class="meta-pill">File: {{ pred.filename }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Confidence & Softmax Probability Breakdown -->
+  <div class="card" style="background: #ffffff;">
+    <div class="card-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem;">
+      <h3 class="card-title" style="color: #0f5132;">
+        <span>🎯</span> AI Confidence & Probability Distribution
+      </h3>
+      <span style="font-size: 1.75rem; font-weight: 800; color: #198754;">
+        {{ '%.2f'|format(pred.confidence) }}%
+      </span>
+    </div>
+
+    <!-- Main Confidence Meter -->
+    <div class="confidence-bar-container" style="margin-top: 1.25rem;">
+      <div class="conf-meta" style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 0.35rem;">
+        <span>Primary Prediction Certainty</span>
+        <span style="color: #0f5132;">{{ '%.2f'|format(pred.confidence) }}%</span>
+      </div>
+      <div class="progress-track" style="height: 14px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+        <div class="progress-fill {{ 'success' if pred.disease == 'Healthy' else ('warning' if pred.disease in ['Coccidiosis', 'Fowl Pox'] else 'danger') }}"
+             style="width: {{ pred.confidence }}%; height: 100%; border-radius: 999px; transition: width 1s ease;"></div>
+      </div>
+      <!-- Confidence vs accuracy disclaimer -->
+      <p style="font-size: 0.775rem; color: #64748b; margin-top: 0.4rem; line-height: 1.5;">
+        ⚠️ <strong>Note:</strong> Confidence is the model’s softmax score for this class — it is <em>not</em>
+        the same as diagnostic accuracy. A high confidence score does not mean the prediction is
+        clinically confirmed. Always seek veterinary verification for medical decisions.
+      </p>
+    </div>
+
+    <!-- Probability Distribution Across All Five Supported Classes -->
+    <div style="margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0;">
+      <h4 style="font-size: 0.95rem; color: #0f5132; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>📊</span> Five-Class Softmax Probability Distribution
+      </h4>
+
+      <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+        {% if prob_dict %}
+          {% for cname, prob in prob_dict.items() %}
+            {% set is_top = (cname == pred.disease) %}
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem; font-weight: {{ '700' if is_top else '500' }};">
+                <span style="color: {{ '#0f5132' if is_top else '#475569' }};">
+                  {{ '▶ ' if is_top else '' }}{{ cname }}
+                </span>
+                <span style="color: {{ '#198754' if is_top else '#64748b' }}; font-weight: 700;">
+                  {{ '%.2f'|format(prob) }}%
+                </span>
+              </div>
+              <div style="height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden;">
+                <div style="width: {{ prob }}%; height: 100%; background: {{ '#198754' if is_top else '#cbd5e1' }}; border-radius: 999px;"></div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Detailed distribution vector not recorded for this scan.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Status Alert Box -->
+    <div style="margin-top: 1.75rem; padding: 1rem; border-radius: var(--radius-md); background: {{ '#f0fdf4' if pred.disease == 'Healthy' else '#fef2f2' }}; border: 1px solid {{ '#bbf7d0' if pred.disease == 'Healthy' else '#fecaca' }};">
+      <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+        <span style="font-size: 1.35rem;">{{ '✅' if pred.disease == 'Healthy' else '⚠️' }}</span>
+        <div style="font-size: 0.85rem; line-height: 1.5; color: {{ '#166534' if pred.disease == 'Healthy' else '#991b1b' }};">
+          <strong>Screening Summary:</strong>
+          {% if pred.disease == 'Healthy' %}
+            No gross pathognomonic lesions or distress indicators detected in this image. Maintain regular sanitation, feed management, and flock observation.
+          {% else %}
+            This image shows features that the model associates with <strong>{{ pred.disease }}</strong>.
+            This is a screening indicator only — it is <strong>not</strong> a confirmed diagnosis.
+            Please review symptoms, apply biosecurity isolation as a precaution, and consult a licensed poultry veterinarian to confirm.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Detailed Clinical Guidance Section (Symptoms, Prevention, Next Steps) -->
+<div class="card" style="margin-bottom: 2rem; background: #ffffff;">
+  <div class="card-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem;">
+    <h2 class="card-title" style="color: #0f5132;">
+      <span>📖</span> Disease Profile & Veterinary Guidance: {{ info.name }}
+    </h2>
+    <span class="badge badge-{{ info.badge }}">{{ info.severity }}</span>
+  </div>
+
+  <div style="margin-top: 1.5rem; line-height: 1.6; color: #334155;">
+    <h4 style="font-size: 1rem; color: #0f5132; margin-bottom: 0.35rem;">Clinical Overview</h4>
+    <p style="font-size: 0.925rem; margin-bottom: 1.5rem;">{{ info.summary }}</p>
+
+    <div class="grid grid-3" style="gap: 1.5rem; margin-bottom: 1.75rem;">
+      <!-- Symptoms Card -->
+      <div style="padding: 1.25rem; background: #f8fafc; border-radius: var(--radius-md); border-top: 3px solid #dc3545;">
+        <h4 style="font-size: 0.95rem; color: #991b1b; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🩺</span> Pathognomonic Symptoms
+        </h4>
+        <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #334155; line-height: 1.5;">
+          {% for s in info.symptoms %}
+            <li style="margin-bottom: 0.35rem;">{{ s }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Prevention Card -->
+      <div style="padding: 1.25rem; background: #f8fafc; border-radius: var(--radius-md); border-top: 3px solid #198754;">
+        <h4 style="font-size: 0.95rem; color: #166534; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🛡️</span> Prevention & Biosecurity
+        </h4>
+        <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem; color: #334155; line-height: 1.5;">
+          {% for p in info.prevention %}
+            <li style="margin-bottom: 0.35rem;">{{ p }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Recommended Next Steps -->
+      <div style="padding: 1.25rem; background: #f8fafc; border-radius: var(--radius-md); border-top: 3px solid #0d6efd;">
+        <h4 style="font-size: 0.95rem; color: #075985; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>📋</span> Recommended Action Steps
+        </h4>
+        <p style="font-size: 0.85rem; color: #334155; line-height: 1.6; margin: 0;">
+          {{ info.recommendation }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Etiology and Transmission Details -->
+    <div style="background: #f1f5f9; padding: 1.25rem; border-radius: var(--radius-md); font-size: 0.85rem; color: #475569; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <div>
+        <strong style="color: #0f5132;">Incubation Period:</strong>
+        <div>{{ info.incubation }}</div>
+      </div>
+      <div>
+        <strong style="color: #0f5132;">Expected Mortality:</strong>
+        <div>{{ info.mortality }}</div>
+      </div>
+      <div>
+        <strong style="color: #0f5132;">Transmission Vector:</strong>
+        <div>{{ info.transmission }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ethical AI Veterinary Disclaimer Banner -->
+<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: var(--radius-md); padding: 1.25rem 1.5rem; display: flex; align-items: flex-start; gap: 1rem;">
+  <span style="font-size: 1.5rem;">⚖️</span>
+  <div style="font-size: 0.85rem; color: #475569; line-height: 1.5;">
+    <strong>Mandatory Veterinary Clinical Disclaimer:</strong>
+    PoultryScan AI provides non-invasive diagnostic decision support and flock health screening. 
+    It does not constitute certified veterinary medical advice or formal legal diagnostic certification. 
+    Always confirm suspected outbreaks of contagious or notifiable avian diseases (such as Newcastle Disease or Avian Influenza) with a licensed veterinary practitioner through post-mortem necropsy, bacterial culture, or RT-PCR assays.
+  </div>
+</div>
+
+{% endblock %}

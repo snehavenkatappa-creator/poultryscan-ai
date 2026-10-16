@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Analyze Specimen Image{% endblock %}
+{% block page_title %}Disease Diagnostics{% endblock %}
+
+{% block content %}
+
+<div class="upload-box">
+  
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <h2 style="color: #0f5132; font-size: 1.85rem; font-weight: 800; margin-bottom: 0.5rem;">
+      AI-Powered Poultry Disease Screening
+    </h2>
+    <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 650px; margin: 0 auto; line-height: 1.5;">
+      Upload a photograph of a chicken head/face or full chicken body/droppings. Our deep learning model runs real-time inference across <strong>5 verified poultry health classes</strong>.
+    </p>
+  </div>
+
+  <!-- Switcher Mode Tabs -->
+  <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem;">
+    <a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 0.4rem; background: #0f5132;">
+      <span>🔬</span>
+      <span>Single Specimen Analysis</span>
+    </a>
+    <a href="{{ url_for('multi_chicken') }}" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+      <span>🐥</span>
+      <span>Multi-Chicken Flock Scan</span>
+    </a>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="card" id="uploadCard" style="background: #ffffff; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm);">
+    <form id="uploadForm" action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
+      
+      <!-- Five Active Classes Banner -->
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.85rem 1.15rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; display: flex; gap: 0.85rem; align-items: center;">
+        <span style="font-size: 1.5rem; line-height: 1;">✅</span>
+        <div style="font-size: 0.875rem; color: #166534; line-height: 1.5;">
+          <strong>Active 5-Class Deep Learning Coverage:</strong> 
+          Our MobileNetV2 classifier performs direct real-time inference across 
+          <em>Coccidiosis, Fowl Pox, Healthy Chicken, Newcastle Disease, and Salmonella</em>.
+        </div>
+      </div>
+
+      <!-- Image Type Selection (Examination Modes) -->
+      <div style="margin-bottom: 1.75rem;">
+        <label style="display: block; font-weight: 700; color: #0f5132; margin-bottom: 0.6rem; font-size: 0.95rem;">
+          Select Examination Mode:
+        </label>
+        
+        <div class="mode-selector-grid">
+          <!-- Option 1: Head / Face -->
+          <label class="mode-card {{ 'selected' if selected_type == 'head_face' else '' }}" id="modeHeadCard">
+            <input type="radio" name="image_type" value="head_face" {{ 'checked' if selected_type == 'head_face' else '' }} class="mode-radio">
+            <div class="mode-icon">🐔</div>
+            <div class="mode-details">
+              <h4>Chicken Head / Face Image</h4>
+              <p>Examine comb, wattles, eyes, beak, and nostrils for nodular lesions and edema.</p>
+              <div class="mode-tags">
+                <span style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;">✓ Fowl Pox Trained</span>
+                <span>Comb Scabs</span>
+                <span>Swollen Sinuses</span>
+                <span>Eye Lesions</span>
+              </div>
+            </div>
+          </label>
+
+          <!-- Option 2: Full Body / Droppings -->
+          <label class="mode-card {{ 'selected' if selected_type != 'head_face' else '' }}" id="modeBodyCard">
+            <input type="radio" name="image_type" value="full_body" {{ 'checked' if selected_type != 'head_face' else '' }} class="mode-radio">
+            <div class="mode-icon">🪶</div>
+            <div class="mode-details">
+              <h4>Full Chicken Body / Droppings</h4>
+              <p>Analyze posture, plumage condition, skin, vent feather staining, and fecal signs.</p>
+              <div class="mode-tags">
+                <span style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;">✓ Model-Trained</span>
+                <span>Bloody Stool (Cocci)</span>
+                <span>White Vent (Salmo)</span>
+                <span>Green Diarrhea (ND)</span>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div class="dropzone-container" id="dropzone" role="button" tabindex="0" aria-label="Upload image dropzone">
+        <input type="file" name="image" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+        
+        <div class="dropzone-prompt" id="dropPrompt">
+          <div class="dropzone-icon" style="font-size: 2.75rem; color: #198754;">📤</div>
+          <h3 style="font-size: 1.15rem; color: #0f5132; margin-bottom: 0.35rem;">Drag & Drop poultry image here</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">or click to browse from your device</p>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <span class="meta-pill">JPG</span>
+            <span class="meta-pill">JPEG</span>
+            <span class="meta-pill">PNG</span>
+            <span class="meta-pill">WEBP</span>
+            <span class="meta-pill">Up to 16 MB</span>
+          </div>
+        </div>
+
+        <!-- Live Preview Area -->
+        <div class="preview-wrapper" id="previewWrapper" style="display: none;">
+          <img id="imagePreview" class="preview-img" alt="Preview of uploaded specimen">
+          <div class="preview-meta" id="previewMeta" style="color: #334155; font-size: 0.85rem; margin-top: 0.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; gap: 0.75rem;">
+          <label for="cameraInput" class="btn btn-outline btn-sm" style="cursor: pointer;">
+            <span>📷</span>
+            <span>Camera Capture</span>
+          </label>
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+
+          <button type="button" class="btn btn-danger btn-sm" id="removeBtn" style="display: none;">
+            <span>✕</span>
+            <span>Remove Image</span>
+          </button>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submitBtn" disabled style="padding: 0.75rem 1.75rem; font-size: 1rem;">
+          <span>🔬</span>
+          <span>Analyze Image Now</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Animated Scanner / Loading Indicator -->
+  <div class="scanning-card" id="scanningCard">
+    <div class="scanner-radar">
+      <div class="scanner-laser"></div>
+    </div>
+    <h3 style="color: #0f5132; margin-bottom: 0.5rem;">Running Deep Learning Inference...</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem;" id="scannerStatus">
+      Preprocessing image to 224&times;224 RGB tensor and computing softmax probabilities...
+    </p>
+    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+      <span class="badge badge-info">MobileNetV2 5-Class CNN</span>
+      <span class="badge badge-success">Softmax Multi-Class</span>
+      <span class="badge badge-info">Persistent SQLite Record</span>
+    </div>
+  </div>
+
+  <!-- Verified Model Scope Card -->
+  <div class="card" style="margin-top: 2rem; border-left: 5px solid #198754; background: #ffffff;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+      <div>
+        <h4 style="margin-bottom: 0.4rem; color: #0f5132; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🤖</span> Verified Model Classification Scope
+        </h4>
+        <p style="font-size: 0.875rem; color: #334155; margin-bottom: 0.6rem; line-height: 1.5;">
+          Our transfer-learned MobileNetV2 architecture is actively evaluated on held-out test data across five verified classes:
+        </p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+          {% for c in active_classes %}
+            <span class="badge badge-success">✓ {{ c }}</span>
+          {% endfor %}
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+          * For full veterinary profiles, symptoms, prevention protocols, and educational references, consult our <a href="{{ url_for('diseases') }}" style="color: #198754; text-decoration: underline;">Disease Encyclopedia</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photography Recommendations Card -->
+  <div class="card" style="margin-top: 1.5rem; background: #ffffff;">
+    <h4 style="margin-bottom: 0.75rem; color: #0f5132; display: flex; align-items: center; gap: 0.5rem;">
+      <span>💡</span> Photography Guidelines for Maximum Accuracy
+    </h4>
+    <ul class="checklist">
+      <li>
+        <span class="check-icon">✓</span>
+        <span><strong>Subject Focus:</strong> For Head/Face scans, capture unblurred close-up of comb, wattles, and eyes. For Body scans, photograph plumage posture or fresh fecal samples.</span>
+      </li>
+      <li>
+        <span class="check-icon">✓</span>
+        <span><strong>Natural Lighting:</strong> Photograph under bright daylight or clean white shed lighting; avoid heavy shadows or glare.</span>
+      </li>
+      <li>
+        <span class="check-icon">✓</span>
+        <span><strong>Single Subject:</strong> Focus on one bird or fecal deposit per scan to prevent multi-specimen confusion.</span>
+      </li>
+    </ul>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Interactive mode radio cards toggle
+  document.querySelectorAll('.mode-radio').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      document.querySelectorAll('.mode-card').forEach(card => card.classList.remove('selected'));
+      e.target.closest('.mode-card').classList.add('selected');
+    });
+  });
+</script>
+{% endblock %}

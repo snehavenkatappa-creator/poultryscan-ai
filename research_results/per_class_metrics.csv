@@ -1,0 +1,9 @@
+class,precision,recall,f1_score,support
+Coccidiosis,1.0,0.9464,0.9725,56
+Fowl Pox,1.0,1.0,1.0,28
+Healthy,0.8485,0.9333,0.8889,60
+Newcastle Disease,0.8293,0.8947,0.8608,38
+Salmonella,0.9259,0.8333,0.8772,60
+macro avg,0.9207,0.9216,0.9199,242
+weighted avg,0.9173,0.9132,0.9138,242
+Overall Accuracy,,,0.9132,242

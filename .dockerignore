@@ -1,0 +1,45 @@
+# ── Python artifacts ──
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ── Git ──
+.git/
+.gitignore
+
+# ── Large training/data directories (not needed at runtime) ──
+dataset/
+test_dataset/
+dataset_download/
+non_poultry_test/
+backups_stage8/
+
+# ── Uploaded images (ephemeral; mounted from /data at runtime) ──
+uploads/*
+!uploads/.gitkeep
+
+# ── Local SQLite database (ephemeral; re-created at runtime) ──
+database/*.db
+
+# ── Secrets ──
+.env
+*.env
+
+# ── Backup / scratch files ──
+*.backup
+app_server.log
+
+# ── Training scripts (not needed at runtime) ──
+train_model.py
+train_efficientnet.py
+prepare_dataset.py
+evaluate_model.py
+inspect_model.py
+test_*.py
+
+# NOTE: evaluation_results/ and research_results/ are intentionally
+# INCLUDED so the About page can display verified model metrics and
+# Grad-CAM visualizations.

@@ -1,0 +1,62 @@
+{
+  "audit_date": "2026-10-14 15:39:58",
+  "train_dir": "C:\\Users\\sneha\\OneDrive\\Documents\\Chicken-Disease-Detection-2\\Chicken-Disease-Detection 22222\\dataset",
+  "test_dir": "C:\\Users\\sneha\\OneDrive\\Documents\\Chicken-Disease-Detection-2\\Chicken-Disease-Detection 22222\\test_dataset",
+  "total_train_images": 1815,
+  "total_test_images": 242,
+  "total_images": 2057,
+  "estimated_effective_train": 1452,
+  "estimated_effective_val": 363,
+  "train_val_split_method": "tf.keras.utils.image_dataset_from_directory(validation_split=0.2, seed=42)",
+  "note_on_split": "Training (dataset/) and test (test_dataset/) are separate folders. The 80/20 train/val split is computed within the dataset/ folder during training. No images from test_dataset/ were used during training or validation.",
+  "class_distribution": {
+    "Coccidiosis": {
+      "train": 450,
+      "test": 56,
+      "total": 506,
+      "train_pct": 24.8,
+      "imbalance_ratio_vs_majority": 1.0
+    },
+    "Fowl Pox": {
+      "train": 127,
+      "test": 28,
+      "total": 155,
+      "train_pct": 7.0,
+      "imbalance_ratio_vs_majority": 3.54
+    },
+    "Healthy": {
+      "train": 450,
+      "test": 60,
+      "total": 510,
+      "train_pct": 24.8,
+      "imbalance_ratio_vs_majority": 1.0
+    },
+    "Newcastle Disease": {
+      "train": 338,
+      "test": 38,
+      "total": 376,
+      "train_pct": 18.6,
+      "imbalance_ratio_vs_majority": 1.33
+    },
+    "Salmonella": {
+      "train": 450,
+      "test": 60,
+      "total": 510,
+      "train_pct": 24.8,
+      "imbalance_ratio_vs_majority": 1.0
+    }
+  },
+  "imbalance_note": "Fowl Pox is significantly underrepresented (127 train, 28 test) compared to Coccidiosis, Healthy, and Salmonella (450 each). Balanced class weights were applied during training via compute_class_weight('balanced').",
+  "data_leakage": {
+    "train_images_hashed": 1785,
+    "duplicates_found": 0,
+    "duplicate_files": [],
+    "clean": true
+  },
+  "limitations": [
+    "No metadata about farm, bird ID, or video sequence origin \u2014 near-duplicate images from the same bird cannot be detected by SHA-256 alone.",
+    "Class imbalance in Fowl Pox (127 train vs 450 others) may affect recall; class weighting was applied during training.",
+    "Dataset source, geographic origin, camera hardware, and licensing are not documented in the project \u2014 these must be disclosed in the IEEE paper.",
+    "Generalization to different farms, breeds, or camera conditions has not been evaluated."
+  ]
+}

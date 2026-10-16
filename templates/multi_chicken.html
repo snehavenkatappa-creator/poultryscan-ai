@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Multi-Chicken Flock Analysis · PoultryScan AI{% endblock %}
+{% block page_title %}Flock Diagnostics{% endblock %}
+
+{% block content %}
+
+<div class="upload-box">
+  
+  <div style="text-align: center; margin-bottom: 2rem;">
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0.35rem 0.85rem; border-radius: 9999px; margin-bottom: 0.75rem;">
+      <span style="font-size: 1.1rem;">🐥</span>
+      <span style="font-size: 0.85rem; font-weight: 700; color: #065f46;">Multi-Specimen Detection & Triage</span>
+    </div>
+    <h2 style="color: #0f5132; font-size: 1.85rem; font-weight: 800; margin-bottom: 0.5rem;">
+      Multi-Chicken Flock Analysis
+    </h2>
+    <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 650px; margin: 0 auto; line-height: 1.5;">
+      Upload a photograph containing multiple chickens in a pen, yard, or poultry shed. The system detects individual birds with bounding boxes, assigns unique IDs, crops each chicken, and performs independent health classification.
+    </p>
+  </div>
+
+  <!-- Switcher Mode Tabs -->
+  <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem;">
+    <a href="{{ url_for('upload') }}" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+      <span>🔬</span>
+      <span>Single Specimen Analysis</span>
+    </a>
+    <a href="{{ url_for('multi_chicken') }}" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 0.4rem; background: #0f5132;">
+      <span>🐥</span>
+      <span>Multi-Chicken Flock Scan</span>
+    </a>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="card" id="uploadCard" style="background: #ffffff; border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm);">
+    <form id="flockForm" action="{{ url_for('multi_chicken') }}" method="POST" enctype="multipart/form-data">
+      
+      <!-- Operational Pipeline Banner -->
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.85rem 1.15rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; display: flex; gap: 0.85rem; align-items: flex-start;">
+        <span style="font-size: 1.5rem; line-height: 1;">ℹ️</span>
+        <div style="font-size: 0.875rem; color: #166534; line-height: 1.5;">
+          <strong>How Flock Analysis Works:</strong>
+          <ul style="margin: 0.35rem 0 0 1.25rem; padding: 0;">
+            <li><strong>Detection:</strong> FasterRCNN detector identifies individual visible chickens and assigns unique scan IDs.</li>
+            <li><strong>Classification:</strong> Each crop is processed by the MobileNetV2 body classifier using exact 224&times;224 normalization.</li>
+            <li><strong>Quality Check:</strong> Distant, small (&lt;50px), or ambiguous crops are automatically tagged <em>"Uncertain — manual review required"</em>.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div class="dropzone-container" id="dropzone" role="button" tabindex="0" aria-label="Upload flock image dropzone">
+        <input type="file" name="image" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+        
+        <div class="dropzone-prompt" id="dropPrompt">
+          <div class="dropzone-icon" style="font-size: 2.75rem; color: #198754;">📸</div>
+          <h3 style="font-size: 1.15rem; color: #0f5132; margin-bottom: 0.35rem;">Drag & drop flock photograph here</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">or click to browse from your device</p>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <span class="meta-pill">JPG</span>
+            <span class="meta-pill">JPEG</span>
+            <span class="meta-pill">PNG</span>
+            <span class="meta-pill">WEBP</span>
+            <span class="meta-pill">Up to 16 MB</span>
+          </div>
+        </div>
+
+        <!-- Live Preview Area -->
+        <div class="preview-wrapper" id="previewWrapper" style="display: none;">
+          <img id="imagePreview" class="preview-img" alt="Preview of uploaded flock">
+          <div class="preview-meta" id="previewMeta" style="color: #334155; font-size: 0.85rem; margin-top: 0.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="button" class="btn btn-outline btn-sm" id="clearBtn" style="display: none;">
+            Clear Selection
+          </button>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="analyzeBtn" style="background: #0f5132; min-width: 220px;" disabled>
+          <span>🐥 Run Flock Analysis</span>
+        </button>
+      </div>
+
+      <!-- Veterinary Disclaimer -->
+      <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; font-size: 0.8rem; color: #64748b; line-height: 1.4;">
+        <strong>Veterinary Decision Support Only:</strong> Automated poultry flock scanning assists in preliminary screening and early anomaly detection. It does not replace physical examination, bacteriology, or PCR assays by a licensed poultry veterinarian.
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const dropPrompt = document.getElementById("dropPrompt");
+  const previewWrapper = document.getElementById("previewWrapper");
+  const imagePreview = document.getElementById("imagePreview");
+  const previewMeta = document.getElementById("previewMeta");
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const clearBtn = document.getElementById("clearBtn");
+
+  dropzone.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("dragover"); });
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file) {
+    if (!file.type.match("image.*")) {
+      alert("Please upload a valid image file (JPG, PNG, WEBP).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imagePreview.src = e.target.result;
+      previewWrapper.style.display = "block";
+      dropPrompt.style.display = "none";
+      previewMeta.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+      analyzeBtn.disabled = false;
+      clearBtn.style.display = "inline-block";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  clearBtn.addEventListener("click", () => {
+    fileInput.value = "";
+    imagePreview.src = "";
+    previewWrapper.style.display = "none";
+    dropPrompt.style.display = "block";
+    analyzeBtn.disabled = true;
+    clearBtn.style.display = "none";
+  });
+});
+</script>
+
+{% endblock %}

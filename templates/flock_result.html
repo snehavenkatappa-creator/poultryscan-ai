@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}Flock Scan Results #{{ pred.id }} · PoultryScan AI{% endblock %}
+{% block page_title %}Flock Diagnostics Report{% endblock %}
+
+{% block content %}
+
+<!-- Header & Quick Actions -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <span class="badge badge-info" style="font-size: 0.85rem; padding: 0.35rem 0.65rem;">
+        🐥 Multi-Chicken Flock Analysis #{{ pred.id }}
+      </span>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">{{ pred.created_at }}</span>
+    </div>
+    <h2 style="margin: 0; color: #0f5132;">Flock Health Screening Summary</h2>
+  </div>
+
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <a href="{{ url_for('multi_chicken') }}" class="btn btn-outline btn-sm">
+      <span>➕</span> Scan Another Flock
+    </a>
+    <a href="{{ url_for('history') }}" class="btn btn-ghost btn-sm">
+      <span>📜</span> View History
+    </a>
+    <button onclick="window.print()" class="btn btn-outline btn-sm">
+      <span>🖨️</span> Print / Export
+    </button>
+  </div>
+</div>
+
+<!-- KPI Cards Summary -->
+<div class="grid grid-4" style="margin-bottom: 1.75rem;">
+  <div class="kpi-card">
+    <div class="kpi-icon blue">🐥</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Chickens Detected</span>
+      <span class="kpi-value">{{ total_chickens }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon green">✅</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Healthy Chickens</span>
+      <span class="kpi-value" style="color: #10b981;">{{ healthy_count }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon red">🦠</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Suspected Disease</span>
+      <span class="kpi-value" style="color: #ef4444;">{{ diseased_count }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon orange" style="background: #fffbeb;">⚠️</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Uncertain / Review</span>
+      <span class="kpi-value" style="color: #f59e0b;">{{ uncertain_count }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main Section: Annotated Image + Overview -->
+<div class="grid grid-2" style="margin-bottom: 2rem; align-items: start;">
+  
+  <!-- Left: Annotated Image with Bounding Boxes -->
+  <div class="card" style="padding: 1rem;">
+    <div class="card-header" style="margin-bottom: 0.75rem;">
+      <h3 class="card-title" style="font-size: 1.05rem;">
+        <span>🎯</span> Detected Chickens & Bounding Boxes
+      </h3>
+    </div>
+    
+    <div style="position: relative; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); background: #0f172a; text-align: center;">
+      <img src="{{ url_for('uploaded_file', filename=annotated_filename) }}" 
+           alt="Annotated Flock Image" 
+           style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+    </div>
+
+    <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; font-size: 0.8rem;">
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+        <span style="width: 12px; height: 12px; background: #10b981; border-radius: 2px;"></span> Healthy Bird
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+        <span style="width: 12px; height: 12px; background: #ef4444; border-radius: 2px;"></span> Suspected Pathology
+      </span>
+      <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+        <span style="width: 12px; height: 12px; background: #f59e0b; border-radius: 2px;"></span> Uncertain / Manual Review
+      </span>
+    </div>
+  </div>
+
+  <!-- Right: Flock Health Advisory & Summary -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><span>📋</span> Veterinary Flock Triage Guidance</h3>
+    </div>
+
+    {% if diseased_count > 0 %}
+      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+        <h4 style="color: #991b1b; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>🚨</span> Pathological Indicators Flagged in Flock
+        </h4>
+        <p style="color: #7f1d1d; font-size: 0.875rem; margin: 0; line-height: 1.4;">
+          One or more individual chickens exhibit visual characteristics consistent with poultry disease. Promptly isolate flagged birds from the main flock to reduce contagion risk, and inspect water, litter, and feed sources.
+        </p>
+      </div>
+    {% else %}
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+        <h4 style="color: #166534; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>✅</span> No Active Disease Signs Flagged
+        </h4>
+        <p style="color: #14532d; font-size: 0.875rem; margin: 0; line-height: 1.4;">
+          All clearly identified birds in this scan exhibit postures and plumage consistent with normal health. Continue regular biosecurity and clean drinking water protocols.
+        </p>
+      </div>
+    {% endif %}
+
+    <!-- Veterinary Disclaimer Box -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem; font-size: 0.85rem; color: #475569; line-height: 1.5;">
+      <strong>⚠️ Clinical Screening Notice:</strong>
+      <p style="margin: 0.35rem 0 0;">
+        PoultryScan AI automated flock screening is a decision-support tool. It does not guarantee detection of every bird or diagnose subclinical systemic infections. AI results must be confirmed by physical examination, necropsy, or PCR by an avian veterinarian before administering pharmacological treatments.
+      </p>
+    </div>
+
+    <!-- Quick Info -->
+    <div style="margin-top: 1.25rem; font-size: 0.85rem;">
+      <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid #f1f5f9;">
+        <span style="color: var(--text-muted);">Model Engine:</span>
+        <strong>MobileNetV2 (5 Classes) + FasterRCNN</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid #f1f5f9;">
+        <span style="color: var(--text-muted);">Preprocessed Input:</span>
+        <strong>224 &times; 224 Bilinear RGB [0.0, 1.0]</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 0.4rem 0;">
+        <span style="color: var(--text-muted);">Scan ID:</span>
+        <code>#{{ pred.id }} ({{ pred.filename }})</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Per-Chicken Diagnostics Cards -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">
+    <h3 class="card-title">
+      <span>🔎</span> Individual Chicken Diagnostic Breakdown ({{ chickens|length }} Birds)
+    </h3>
+  </div>
+
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Chicken ID</th>
+          <th>Detection Conf.</th>
+          <th>Crop Size</th>
+          <th>Predicted Condition</th>
+          <th>Classification Conf.</th>
+          <th>Status / Action</th>
+          <th>Probabilities</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ch in chickens %}
+          <tr>
+            <td>
+              <span style="font-weight: 800; font-size: 0.95rem; color: #0f5132;">
+                Chicken #{{ ch.id }}
+              </span>
+            </td>
+            <td>
+              <span class="badge badge-info" style="font-size: 0.8rem;">
+                {{ ch.detection_confidence }}%
+              </span>
+            </td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">
+              {{ ch.crop_dimensions }} px
+            </td>
+            <td>
+              <strong>{{ ch.predicted_disease }}</strong>
+            </td>
+            <td>
+              <strong style="color: {{ '#10b981' if ch.predicted_disease == 'Healthy' else '#ef4444' }};">
+                {{ ch.classification_confidence }}%
+              </strong>
+            </td>
+            <td>
+              {% if ch.is_uncertain %}
+                <span class="badge badge-warning" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                  ⚠️ Uncertain — manual review required
+                </span>
+                {% if ch.uncertainty_reason %}
+                  <div style="font-size: 0.75rem; color: #b45309; margin-top: 0.2rem;">
+                    ({{ ch.uncertainty_reason }})
+                  </div>
+                {% endif %}
+              {% elif ch.predicted_disease == 'Healthy' %}
+                <span class="badge badge-success">
+                  ✓ Confident Healthy
+                </span>
+              {% else %}
+                <span class="badge badge-danger">
+                  🚨 Suspect Condition
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="font-size: 0.75rem; color: #475569; min-width: 180px;">
+                {% for cname, prob in ch.probabilities.items() %}
+                  {% if prob >= 5.0 %}
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1px;">
+                      <span>{{ cname }}:</span>
+                      <strong>{{ prob }}%</strong>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

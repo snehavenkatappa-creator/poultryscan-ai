@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}PoultryScan AI — Intelligent 5-Class Poultry Disease Detection{% endblock %}
+{% block page_title %}System Overview{% endblock %}
+
+{% block content %}
+
+<!-- Hero Banner with Poultry Photo & CTA -->
+<section class="hero-banner-new" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 55%, #ecfdf5 100%); border: 1px solid #bbf7d0; border-radius: var(--radius-lg); padding: 2.5rem; margin-bottom: 2.5rem; position: relative; overflow: hidden; box-shadow: var(--shadow-sm);">
+  <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 2rem; align-items: center;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #dcfce7; color: #166534; font-size: 0.8rem; font-weight: 700; padding: 0.35rem 0.85rem; border-radius: 999px; margin-bottom: 1rem; border: 1px solid #86efac;">
+        <span>🔬</span> Five-Class Deep Learning System
+      </div>
+      <h1 style="font-size: 2.35rem; font-weight: 800; color: #0f5132; line-height: 1.2; margin-bottom: 1rem; letter-spacing: -0.02em;">
+        Intelligent Poultry Disease Screening <br><span style="color: #198754;">Powered by MobileNetV2</span>
+      </h1>
+      <p style="font-size: 1.05rem; color: #334155; line-height: 1.6; margin-bottom: 1.75rem;">
+        Automated real-time image analysis for early detection of avian illnesses across five verified categories — 
+        including <strong>Fowl Pox</strong>, <strong>Coccidiosis</strong>, <strong>Newcastle Disease</strong>, <strong>Salmonella</strong>, and <strong>Healthy</strong> specimens.
+      </p>
+      <div style="display: flex; gap: 0.85rem; flex-wrap: wrap;">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary" style="padding: 0.85rem 1.75rem; font-size: 1rem;">
+          <span>🔬</span>
+          <span>Analyze Image</span>
+        </a>
+        <a href="{{ url_for('diseases') }}" class="btn btn-outline" style="padding: 0.85rem 1.5rem; font-size: 0.95rem;">
+          <span>📖</span>
+          <span>Explore 5 Disease Classes</span>
+        </a>
+        <a href="{{ url_for('about') }}" class="btn btn-ghost" style="padding: 0.85rem 1.25rem; font-size: 0.95rem;">
+          <span>📊</span>
+          <span>View
+            {% if eval_data %}{{ "%.1f"|format(eval_data.overall_accuracy) }}%{% else %}Benchmark{% endif %}
+            Test Results &rarr;
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Hero Photography Container -->
+    <div style="position: relative; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); border: 3px solid #ffffff;">
+      <img src="{{ url_for('static', filename='images/hero_poultry.jpg') }}" 
+           alt="Healthy flock foraging on a modern poultry farm"
+           style="width: 100%; height: 280px; object-fit: cover; display: block;">
+      <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(15, 81, 50, 0.85), transparent); color: #ffffff; padding: 1rem; font-size: 0.825rem; font-weight: 600;">
+        PoultryScan AI Field Inspection System · 24/7 Veterinary Screening Decision Support
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Dual Examination Modes Section -->
+<div style="margin-bottom: 2.5rem;">
+  <div style="margin-bottom: 1.25rem;">
+    <h2 style="font-size: 1.4rem; color: #0f5132; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+      <span>📷</span> Dual Clinical Examination Modes
+    </h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Select the appropriate imaging mode matching your uploaded specimen photograph.
+    </p>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Mode 1: Head / Face Analysis -->
+    <div class="card" style="border: 2px solid #bbf7d0; transition: var(--transition); background: #ffffff;">
+      <div style="display: flex; align-items: flex-start; gap: 1rem;">
+        <span style="font-size: 2.5rem; background: #dcfce7; padding: 0.75rem; border-radius: var(--radius-md);">🐔</span>
+        <div style="flex: 1;">
+          <span class="badge badge-success" style="margin-bottom: 0.35rem;">Mode 1 · Cutaneous Signs</span>
+          <h3 style="font-size: 1.25rem; color: #0f5132; margin-bottom: 0.35rem;">Chicken Head / Face Analysis</h3>
+          <p style="font-size: 0.875rem; color: #475569; line-height: 1.5; margin-bottom: 1rem;">
+            Primary examination mode for <strong>Fowl Pox</strong> (nodular scabs on comb, wattles, eyelids), facial edema, comb cyanosis, and conjunctivitis.
+          </p>
+          <a href="{{ url_for('upload', type='head_face') }}" class="btn btn-primary btn-sm">
+            <span>📷</span>
+            <span>Upload Head / Face Specimen</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode 2: Full Body & Droppings Analysis -->
+    <div class="card" style="border: 2px solid #bbf7d0; transition: var(--transition); background: #ffffff;">
+      <div style="display: flex; align-items: flex-start; gap: 1rem;">
+        <span style="font-size: 2.5rem; background: #dcfce7; padding: 0.75rem; border-radius: var(--radius-md);">🪶</span>
+        <div style="flex: 1;">
+          <span class="badge badge-info" style="margin-bottom: 0.35rem;">Mode 2 · Systemic & Fecal</span>
+          <h3 style="font-size: 1.25rem; color: #0f5132; margin-bottom: 0.35rem;">Full Body & Droppings Analysis</h3>
+          <p style="font-size: 0.875rem; color: #475569; line-height: 1.5; margin-bottom: 1rem;">
+            Detects <strong>Coccidiosis</strong> (bloody stool), <strong>Salmonella</strong> (chalky white pasty vent), <strong>Newcastle Disease</strong> (green diarrhea/torticollis), and <strong>Healthy</strong> birds.
+          </p>
+          <a href="{{ url_for('upload', type='full_body') }}" class="btn btn-primary btn-sm">
+            <span>📸</span>
+            <span>Upload Body / Fecal Specimen</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Metrics Grid -->
+<div class="grid grid-4" style="margin-bottom: 2.5rem;">
+  <div class="kpi-card" style="border-left: 4px solid #198754;">
+    <div class="kpi-icon green">🎯</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Held-Out Test Accuracy</span>
+      <span class="kpi-value" style="color: #0f5132;">
+        {% if eval_data %}{{ "%.2f"|format(eval_data.overall_accuracy) }}%{% else %}Pending{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 4px solid #0d6efd;">
+    <div class="kpi-icon blue">📸</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Total Screenings Recorded</span>
+      <span class="kpi-value" data-count="{{ total }}">{{ total }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 4px solid #16a34a;">
+    <div class="kpi-icon green">✅</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Healthy Records</span>
+      <span class="kpi-value" data-count="{{ healthy }}">{{ healthy }}</span>
+    </div>
+  </div>
+
+  <div class="kpi-card" style="border-left: 4px solid #dc3545;">
+    <div class="kpi-icon red">⚠️</div>
+    <div class="kpi-content">
+      <span class="kpi-label">Pathology Cases</span>
+      <span class="kpi-value" data-count="{{ diseased }}">{{ diseased }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Five Active Supported Disease Classes (Section 2 & 3) -->
+<div class="card" style="margin-bottom: 2.5rem; background: #ffffff;">
+  <div class="card-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem;">
+    <div>
+      <h2 class="card-title" style="color: #0f5132;">
+        <span>🩺</span> Five Active Trained Disease Classes
+      </h2>
+      <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+        Real deep learning inference verified on {% if eval_data %}{{ eval_data.total_test_samples }}{% else %}242{% endif %} held-out test specimens with exact class index mapping.
+      </p>
+    </div>
+    <span class="badge badge-success" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">5 Verified Classes</span>
+  </div>
+
+  <div class="grid grid-3" style="margin-top: 1.5rem; gap: 1.25rem;">
+    {% for cname in active_classes %}
+      {% set info = disease_info.get(cname, disease_info['Healthy']) %}
+      <div class="feature-card" style="padding: 1.5rem; border-top: 4px solid #198754; background: #f8fafc; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <span style="font-size: 2rem;">{{ info.icon }}</span>
+          <span class="badge badge-{{ info.badge }}">{{ info.severity }}</span>
+        </div>
+        <h3 style="margin-bottom: 0.35rem; font-size: 1.15rem; color: #0f5132;">{{ cname }}</h3>
+        <p style="font-size: 0.825rem; color: #64748b; font-style: italic; margin-bottom: 0.5rem;">
+          {{ info.scientific_name }}
+        </p>
+        <p style="font-size: 0.85rem; color: #334155; margin-bottom: 0.85rem; line-height: 1.5;">
+          {{ info.summary[:130] }}...
+        </p>
+
+        <!-- Symptoms snippet -->
+        <div style="margin-bottom: 0.85rem;">
+          <strong style="font-size: 0.775rem; color: #0f5132; text-transform: uppercase;">Key Signs:</strong>
+          <ul style="margin: 0.35rem 0 0 1.1rem; padding: 0; font-size: 0.8rem; color: #475569;">
+            {% for sym in info.symptoms[:2] %}
+              <li>{{ sym }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: #166534;">✓ MobileNetV2 Active</span>
+          <a href="{{ url_for('diseases') }}#{{ cname|replace(' ', '_') }}" class="btn btn-ghost btn-sm" style="font-size: 0.775rem;">Clinical Profile &rarr;</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Reference Encyclopedia Catalog (Educational) -->
+<div class="card" style="margin-bottom: 2.5rem; background: #ffffff;">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title" style="color: #0f5132;">
+        <span>📚</span> Reference Avian Pathology Catalog
+      </h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+        Clinical veterinary profiles documented for future model retraining upon acquisition of certified training images.
+      </p>
+    </div>
+    <a href="{{ url_for('diseases') }}" class="btn btn-ghost btn-sm">View All 14 Diseases &rarr;</a>
+  </div>
+
+  <div class="grid grid-3">
+    {% for rname in reference_classes[:6] %}
+      {% set rinfo = disease_info[rname] %}
+      <div style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: var(--radius-md); background: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+          <span style="font-size: 1.35rem;">{{ rinfo.icon }}</span>
+          <h4 style="font-size: 0.95rem; margin: 0; color: #334155;">{{ rname }}</h4>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+          {{ rinfo.summary[:80] }}...
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Quick Contact & Veterinary Disclaimer Banner -->
+<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-lg); padding: 1.75rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+  <div>
+    <h3 style="font-size: 1.15rem; color: #0f5132; margin-bottom: 0.25rem;">
+      Need Clinical Consultation or Custom Farm Integration?
+    </h3>
+    <p style="font-size: 0.875rem; color: #475569; margin: 0;">
+      Our AI provides automated clinical screening. For suspected notifiable outbreaks, consult a certified poultry veterinarian.
+    </p>
+  </div>
+  <a href="{{ url_for('contact') }}" class="btn btn-primary">
+    <span>💬</span>
+    <span>Contact & Feedback</span>
+  </a>
+</div>
+
+{% endblock %}

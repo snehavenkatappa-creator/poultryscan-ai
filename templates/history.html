@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Scan History{% endblock %}
+{% block page_title %}Audit Log & Scan History{% endblock %}
+
+{% block content %}
+
+<!-- Header and Controls -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h2>Diagnostic Scan Audit Log</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Archived diagnostic records stored persistently in the SQLite database (<code>predictions.db</code>).
+    </p>
+  </div>
+
+  {% if records %}
+  <form action="{{ url_for('clear_history') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete all prediction records and images?');">
+    <button type="submit" class="btn btn-danger btn-sm">
+      <span>🗑️</span>
+      <span>Clear All History</span>
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Filter and Search Bar -->
+<div class="filter-bar">
+  <!-- Disease Category Filter Buttons -->
+  <div class="filter-group">
+    <a href="{{ url_for('history', type=filter_type) }}" class="filter-btn {{ 'active' if not filter_disease }}">
+      All ({{ total_records }})
+    </a>
+    {% for cname in class_names %}
+      <a href="{{ url_for('history', disease=cname, type=filter_type, q=search_q) }}" class="filter-btn {{ 'active' if filter_disease == cname }}">
+        {{ cname }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Mode Filter Buttons -->
+  <div class="filter-group">
+    <a href="{{ url_for('history', disease=filter_disease, q=search_q) }}" class="filter-btn {{ 'active' if not filter_type }}">
+      All Modes
+    </a>
+    <a href="{{ url_for('history', disease=filter_disease, type='head_face', q=search_q) }}" class="filter-btn {{ 'active' if filter_type == 'head_face' }}">
+      🐔 Head/Face
+    </a>
+    <a href="{{ url_for('history', disease=filter_disease, type='full_body', q=search_q) }}" class="filter-btn {{ 'active' if filter_type == 'full_body' }}">
+      🪶 Full Body
+    </a>
+  </div>
+
+  <!-- Search Input -->
+  <form action="{{ url_for('history') }}" method="GET" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    {% if filter_disease %}
+      <input type="hidden" name="disease" value="{{ filter_disease }}">
+    {% endif %}
+    {% if filter_type %}
+      <input type="hidden" name="type" value="{{ filter_type }}">
+    {% endif %}
+    <input type="text" name="q" value="{{ search_q }}" placeholder="Search ID or filename..." class="search-input">
+    <button type="submit" class="btn btn-outline btn-sm">Search</button>
+    {% if search_q or filter_disease or filter_type %}
+      <a href="{{ url_for('history') }}" class="btn btn-ghost btn-sm">Reset</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- History Table Card -->
+<div class="card">
+  {% if records %}
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Specimen</th>
+            <th>Mode</th>
+            <th>Diagnosed Condition</th>
+            <th>Confidence</th>
+            <th>Certainty Status</th>
+            <th>Timestamp</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+            <tr>
+              <td><strong>#{{ r.id }}</strong></td>
+              <td>
+                <img class="table-thumb" src="{{ url_for('uploaded_file', filename=r.annotated_filename if (r['scan_mode'] == 'flock' and r['annotated_filename']) else r.filename) }}" alt="Sample">
+              </td>
+              <td>
+                {% if r['scan_mode'] == 'flock' %}
+                  <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.75rem;">
+                    🐥 Flock Scan ({{ r['chicken_count'] or 1 }} Birds)
+                  </span>
+                {% elif r['image_type'] == 'head_face' %}
+                  <span class="badge badge-info" style="font-size: 0.75rem;">
+                    🐔 Head/Face
+                  </span>
+                {% else %}
+                  <span class="badge badge-info" style="font-size: 0.75rem;">
+                    🪶 Full Body
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {{ 'badge-success' if r.disease == 'Healthy' else ('badge-warning' if r.disease == 'Coccidiosis' else 'badge-danger') }}">
+                  {{ r.disease }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ '%.1f'|format(r.confidence) }}%</strong>
+              </td>
+              <td>
+                {% if r['is_uncertain'] %}
+                  <span class="badge badge-warning">Uncertain</span>
+                {% else %}
+                  <span class="badge badge-success">Confident</span>
+                {% endif %}
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.825rem;">
+                {{ r.created_at }}
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 0.5rem;">
+                  {% if r['scan_mode'] == 'flock' %}
+                    <a href="{{ url_for('flock_result', pred_id=r.id) }}" class="btn btn-ghost btn-sm">
+                      View Flock
+                    </a>
+                  {% else %}
+                    <a href="{{ url_for('result', pred_id=r.id) }}" class="btn btn-ghost btn-sm">
+                      View
+                    </a>
+                  {% endif %}
+                  <form action="{{ url_for('delete_history', pred_id=r.id) }}" method="POST" onsubmit="return confirm('Delete record #{{ r.id }}?');">
+                    <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.45rem 0.6rem;" title="Delete record">
+                      ✕
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div style="text-align: center; padding: 3rem 1rem;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📂</div>
+      <h3>No Diagnostic Records Found</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 420px; margin: 0 auto 1.5rem;">
+        {% if search_q or filter_disease or filter_type %}
+          No records match your active search filters.
+        {% else %}
+          You have not performed any poultry disease scans yet.
+        {% endif %}
+      </p>
+      <a href="{{ url_for('upload') }}" class="btn btn-primary">
+        <span>🔬</span>
+        <span>Run First Diagnosis</span>
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PoultryScan AI{% endblock %} · Automated Poultry Disease Detection</title>
+  <meta name="description" content="PoultryScan AI — An intelligent deep learning platform for automated poultry disease detection across 5 classes including Fowl Pox.">
+  
+  <!-- Modern Typography (Plus Jakarta Sans) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Sidebar Overlay for Mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="app-sidebar" id="appSidebar" aria-label="Main Navigation">
+    <div class="sidebar-header">
+      <a href="{{ url_for('index') }}" class="sidebar-brand">
+        <span class="brand-icon" aria-hidden="true">🐔</span>
+        <div class="brand-text">
+          <span class="brand-title">Poultry<span class="brand-ai">Scan</span> AI</span>
+          <span class="brand-tag">5-Class Deep Learning</span>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+      
+      <a href="{{ url_for('index') }}" class="sidebar-link {{ 'active' if request.endpoint == 'index' }}">
+        <span class="icon">🏠</span>
+        <span>Home</span>
+      </a>
+
+      <a href="{{ url_for('dashboard') }}" class="sidebar-link {{ 'active' if request.endpoint == 'dashboard' }}">
+        <span class="icon">📊</span>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="{{ url_for('upload') }}" class="sidebar-link {{ 'active' if request.endpoint == 'upload' }}">
+        <span class="icon">🔬</span>
+        <span>Analyze Single Image</span>
+      </a>
+
+      <a href="{{ url_for('multi_chicken') }}" class="sidebar-link {{ 'active' if request.endpoint in ['multi_chicken', 'flock_result'] }}">
+        <span class="icon">🐥</span>
+        <span>Multi-Chicken Scan</span>
+      </a>
+
+      <div class="nav-section-title" style="margin-top: 0.5rem;">Clinical Knowledge</div>
+
+      <a href="{{ url_for('diseases') }}" class="sidebar-link {{ 'active' if request.endpoint == 'diseases' }}">
+        <span class="icon">📖</span>
+        <span>Disease Info (5 Classes)</span>
+      </a>
+
+      <a href="{{ url_for('history') }}" class="sidebar-link {{ 'active' if request.endpoint == 'history' }}">
+        <span class="icon">📜</span>
+        <span>Scan History</span>
+      </a>
+
+      <div class="nav-section-title" style="margin-top: 0.5rem;">System & Support</div>
+
+      <a href="{{ url_for('about') }}" class="sidebar-link {{ 'active' if request.endpoint == 'about' }}">
+        <span class="icon">🎓</span>
+        <span>About & Benchmarks</span>
+      </a>
+
+      <a href="{{ url_for('contact') }}" class="sidebar-link {{ 'active' if request.endpoint == 'contact' }}">
+        <span class="icon">💬</span>
+        <span>Contact & Feedback</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="model-status-card" id="modelStatusCard">
+        <div class="status-dot {{ '' if model_loaded else 'offline' }}" id="modelStatusDot"></div>
+        <div class="status-info">
+          <span class="status-title">MobileNetV2 CNN</span>
+          <span class="status-meta" id="modelStatusMeta">
+            {% if model_loaded %}Checking inference&hellip;{% else %}Model Unavailable{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="app-main">
+    
+    <!-- Top Bar -->
+    <header class="app-topbar">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <button class="topbar-mobile-toggle" id="mobileMenuBtn" aria-label="Toggle navigation menu">
+          ☰
+        </button>
+        <div class="topbar-breadcrumb">
+          <span>PoultryScan AI</span>
+          <span>/</span>
+          <strong>{% block page_title %}Overview{% endblock %}</strong>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary btn-sm">
+          <span>🔬</span>
+          <span>Analyze Image</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Dynamic Content -->
+    <main class="content-wrapper">
+      
+      <!-- Flash Messages -->
+      <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}" role="alert">
+                <span>{{ message }}</span>
+                <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Close message">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <div>
+        <strong>PoultryScan AI</strong> · Multi-Class Poultry Disease Detection
+      </div>
+      <div>
+        <span>Model: MobileNetV2 (5 Classes) · Flask · SQLite · Keras</span>
+      </div>
+      <div>
+        <span style="color: var(--text-light);">Veterinary Clinical Screening Estimate Only · Not Final Diagnostic Certificate</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    // Refresh sidebar model status from /api/model-status on page load
+    (function() {
+      var dot  = document.getElementById('modelStatusDot');
+      var meta = document.getElementById('modelStatusMeta');
+      if (!dot || !meta) return;
+      fetch('/api/model-status')
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          meta.textContent = d.label +
+            (d.eval_accuracy ? ' (' + d.eval_accuracy.toFixed(1) + '% Acc)' : '');
+          if (d.status === 'ready') {
+            dot.classList.remove('offline');
+          } else {
+            dot.classList.add('offline');
+          }
+        })
+        .catch(function(){ /* keep server-rendered default */ });
+    })();
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,197 @@
+"""End-to-end integration and verification test suite for PoultryScan AI (5-Class)."""
+
+import io
+import json
+import os
+import sys
+
+# Ensure UTF-8 output on Windows console
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
+import app
+
+
+def run_tests():
+    print("=" * 65)
+    print("RUNNING POULTRYSCAN AI 5-CLASS INTEGRATION TESTS")
+    print("=" * 65)
+
+    client = app.app.test_client()
+
+    # 1. Verify Model Loading
+    print("\n[Test 1] Verifying trained model availability in Flask app...")
+    model = app.app.config.get("MODEL")
+    assert model is not None, "FAILED: Trained model is not loaded in app.config['MODEL']"
+    classes = app.app.config.get("CLASS_NAMES")
+    assert len(classes) == 5, f"Expected 5 classes, got {len(classes)}: {classes}"
+    print(f"  [OK] SUCCESS: Trained MobileNetV2 model loaded with {len(classes)} classes: {classes}")
+
+    # 2. Test Real Model Inference across all 5 Classes
+    print("\n[Test 2] Testing real model inference on test specimens for all 5 classes...")
+    test_samples = [
+        ("Coccidiosis", r"test_dataset\Coccidiosis"),
+        ("Fowl Pox", r"test_dataset\Fowl Pox"),
+        ("Healthy", r"test_dataset\Healthy"),
+        ("Newcastle Disease", r"test_dataset\Newcastle Disease"),
+        ("Salmonella", r"test_dataset\Salmonella"),
+    ]
+
+    for expected_class, folder in test_samples:
+        assert os.path.exists(folder), f"Test directory missing: {folder}"
+        files = sorted(os.listdir(folder))
+        assert len(files) > 0, f"No files in test directory: {folder}"
+        sample_path = os.path.join(folder, files[0])
+
+        mode = "head_face" if expected_class == "Fowl Pox" else "full_body"
+        pred_class, conf, probs, is_unc = app.predict_image(sample_path, image_type=mode)
+
+        print(f"  Sample: {os.path.basename(sample_path)} | Expected: {expected_class:18s} -> Predicted: {pred_class:18s} ({conf:.2f}%) | Uncertain: {is_unc}")
+        assert pred_class == expected_class, f"Mismatch: expected {expected_class}, got {pred_class}"
+        assert conf > 60.0, f"Expected confidence > 60%, got {conf}"
+        assert len(probs) == 5, f"Expected 5 class probabilities, got {len(probs)}"
+        assert "Fowl Pox" in probs, "Missing 'Fowl Pox' in probability distribution"
+
+    print("  [OK] SUCCESS: Real model predictions correctly match all 5 classes!")
+
+    # 3. Test HTTP Routes
+    print("\n[Test 3] Verifying HTTP endpoints...")
+    
+    # Health check route
+    res = client.get("/health")
+    assert res.status_code == 200, f"/health returned {res.status_code}"
+    health_data = json.loads(res.data)
+    assert health_data["status"] == "healthy"
+    assert health_data["num_classes"] == 5
+    assert "Fowl Pox" in health_data["classes"]
+    print("  [OK] Health-check route (/health) OK (200)")
+
+    # Home Page
+    res = client.get("/")
+    assert res.status_code == 200, f"Home page returned {res.status_code}"
+    assert b"PoultryScan" in res.data
+    assert b"Fowl Pox" in res.data
+    print("  [OK] Home page (/) OK (200)")
+
+    # Upload Page (Head/Face mode)
+    res = client.get("/upload?type=head_face")
+    assert res.status_code == 200
+    assert b"Chicken Head / Face Image" in res.data
+    print("  [OK] Upload page (/upload?type=head_face) OK (200)")
+
+    # Upload Page (Full Body mode)
+    res = client.get("/upload?type=full_body")
+    assert res.status_code == 200
+    assert b"Full Chicken Body" in res.data
+    print("  [OK] Upload page (/upload?type=full_body) OK (200)")
+
+    # Diseases Encyclopedia
+    res = client.get("/diseases")
+    assert res.status_code == 200
+    for dname in ["Coccidiosis", "Fowl Pox", "Healthy", "Newcastle Disease", "Salmonella"]:
+        assert dname.encode("utf-8") in res.data
+    print("  [OK] Diseases encyclopedia (/diseases) renders all 5 active classes OK (200)")
+
+    # About Page
+    res = client.get("/about")
+    assert res.status_code == 200
+    assert b"91.32%" in res.data or b"confusion_matrix.png" in res.data
+    print("  [OK] About page (/about) renders evaluation benchmarks & confusion matrix OK (200)")
+
+    # Dashboard Page
+    res = client.get("/dashboard")
+    assert res.status_code == 200
+    print("  [OK] Dashboard page (/dashboard) OK (200)")
+
+    # Contact Page
+    res = client.get("/contact")
+    assert res.status_code == 200
+    print("  [OK] Contact page (/contact) OK (200)")
+
+    # 4. Test REST API Endpoint (/api/predict)
+    print("\n[Test 4] Testing REST API /api/predict...")
+    fp_sample = os.path.join(r"test_dataset\Fowl Pox", sorted(os.listdir(r"test_dataset\Fowl Pox"))[0])
+    with open(fp_sample, "rb") as f:
+        img_bytes = f.read()
+
+    res = client.post("/api/predict", data={
+        "image": (io.BytesIO(img_bytes), "test_api_fowlpox.jpg"),
+        "image_type": "head_face"
+    })
+    assert res.status_code == 200, f"/api/predict returned {res.status_code}"
+    api_res = json.loads(res.data)
+    assert api_res["success"] is True
+    assert api_res["prediction"] == "Fowl Pox"
+    assert len(api_res["probabilities"]) == 5
+    print(f"  [OK] API predict successfully returned: {api_res['prediction']} ({api_res['confidence']}%)")
+
+    # 5. Test Web Upload Flow & Redirection to Result
+    print("\n[Test 5] Testing Web Upload and Result page flow...")
+    cocci_sample = os.path.join(r"test_dataset\Coccidiosis", sorted(os.listdir(r"test_dataset\Coccidiosis"))[0])
+    with open(cocci_sample, "rb") as f:
+        cocci_bytes = f.read()
+
+    res = client.post("/upload", data={
+        "image": (io.BytesIO(cocci_bytes), "test_cocci_web.jpg"),
+        "image_type": "full_body"
+    }, follow_redirects=True)
+    assert res.status_code == 200
+    assert b"Coccidiosis" in res.data
+    assert b"Diagnostic Report" in res.data
+    print("  [OK] Web upload successfully created record and rendered diagnostic result page!")
+
+    # 6. Test Invalid Upload Rejection
+    print("\n[Test 6] Testing invalid non-image upload rejection...")
+    res = client.post("/upload", data={
+        "image": (io.BytesIO(b"this is plain text"), "invalid.txt"),
+        "image_type": "full_body"
+    }, follow_redirects=True)
+    assert b"Invalid file format" in res.data
+    print("  [OK] Invalid non-image upload correctly rejected!")
+
+    # 7. Test Unrelated Non-Poultry Image Upload Rejection (/upload)
+    print("\n[Test 7] Testing unrelated image rejection (e.g. car, flower) via web upload...")
+    car_sample = os.path.join("non_poultry_test", "car.jpg")
+    with open(car_sample, "rb") as f:
+        car_bytes = f.read()
+
+    with app.app.app_context():
+        db_before = app.get_db().execute("SELECT COUNT(*) c FROM predictions").fetchone()["c"]
+
+    res = client.post("/upload", data={
+        "image": (io.BytesIO(car_bytes), "test_car_upload.jpg"),
+        "image_type": "full_body"
+    }, follow_redirects=True)
+
+    assert res.status_code == 200
+    assert b"Invalid input: Please upload a suitable poultry image" in res.data
+    assert b"Diagnostic Report" not in res.data, "FAILED: Unrelated image generated a diagnostic report!"
+
+    with app.app.app_context():
+        db_after = app.get_db().execute("SELECT COUNT(*) c FROM predictions").fetchone()["c"]
+    assert db_after == db_before, "FAILED: Unrelated image was erroneously saved to database!"
+    print("  [OK] Unrelated image correctly rejected with user message and zero database persistence!")
+
+    # 8. Test Unrelated Non-Poultry Image Rejection via REST API (/api/predict)
+    print("\n[Test 8] Testing unrelated image rejection via REST API (/api/predict)...")
+    res = client.post("/api/predict", data={
+        "image": (io.BytesIO(car_bytes), "test_car_api.jpg"),
+        "image_type": "full_body"
+    })
+    assert res.status_code == 400, f"Expected 400, got {res.status_code}"
+    api_err = json.loads(res.data)
+    assert api_err["success"] is False
+    assert "Invalid input: Please upload a suitable poultry image" in api_err["error"]
+    assert "prediction" not in api_err, "FAILED: API returned disease prediction for unrelated image!"
+    print(f"  [OK] API correctly rejected non-poultry upload with HTTP 400: '{api_err['error']}'")
+
+    print("\n" + "=" * 65)
+    print("ALL 5-CLASS INTEGRATION TESTS PASSED PERFECTLY!")
+    print("=" * 65)
+
+
+if __name__ == "__main__":
+    run_tests()

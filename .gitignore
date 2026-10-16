@@ -1,0 +1,28 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploaded images (ephemeral; do not commit user data)
+uploads/*
+!uploads/.gitkeep
+
+# Local SQLite database (do not commit)
+database/*.db
+
+# Large training / raw dataset directories
+dataset/
+test_dataset/
+dataset_download/
+non_poultry_test/
+
+# Backup snapshots
+backups_stage8/
+
+# Secrets
+.env
+*.env
+
+# NOTE: model/, evaluation_results/, and research_results/ are intentionally
+# NOT ignored so that trained weights and metrics are pushed to GitHub/HF Spaces.

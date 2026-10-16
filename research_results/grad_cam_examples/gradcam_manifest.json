@@ -1,0 +1,172 @@
+{
+  "model": "model/poultry_disease_model.keras",
+  "base_mobilenetv2_layer": "mobilenetv2_1.00_224",
+  "grad_cam_method": "GradCAM via GradientTape on last 4-D spatial layer of MobileNetV2",
+  "target_class": "PREDICTED class (argmax of softmax), not ground-truth",
+  "grad_cam_disclaimer": "Grad-CAM is a qualitative explanation aid. Highlighted regions show where the gradient of the predicted class score w.r.t. the last MobileNetV2 spatial feature map is largest. This does NOT prove causality or prediction correctness.",
+  "seed": 42,
+  "samples_per_class": 2,
+  "total_figures": 10,
+  "figures": [
+    {
+      "gt_class": "Coccidiosis",
+      "pred_class": "Coccidiosis",
+      "confidence": 99.99,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Coccidiosis\\cocci.1176.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Coccidiosis_gt__Coccidiosis_pred__correct__cocci.1176.png",
+      "all_probabilities": {
+        "Coccidiosis": 99.99,
+        "Fowl Pox": 0.01,
+        "Healthy": 0.0,
+        "Newcastle Disease": 0.01,
+        "Salmonella": 0.0
+      }
+    },
+    {
+      "gt_class": "Coccidiosis",
+      "pred_class": "Coccidiosis",
+      "confidence": 96.57,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Coccidiosis\\cocci.1539.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Coccidiosis_gt__Coccidiosis_pred__correct__cocci.1539.png",
+      "all_probabilities": {
+        "Coccidiosis": 96.57,
+        "Fowl Pox": 0.9,
+        "Healthy": 1.04,
+        "Newcastle Disease": 0.92,
+        "Salmonella": 0.58
+      }
+    },
+    {
+      "gt_class": "Fowl Pox",
+      "pred_class": "Fowl Pox",
+      "confidence": 99.39,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Fowl Pox\\fowlpox_100.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Fowl_Pox_gt__Fowl_Pox_pred__correct__fowlpox_100.png",
+      "all_probabilities": {
+        "Coccidiosis": 0.03,
+        "Fowl Pox": 99.39,
+        "Healthy": 0.06,
+        "Newcastle Disease": 0.43,
+        "Salmonella": 0.09
+      }
+    },
+    {
+      "gt_class": "Fowl Pox",
+      "pred_class": "Fowl Pox",
+      "confidence": 98.44,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Fowl Pox\\fowlpox_81.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Fowl_Pox_gt__Fowl_Pox_pred__correct__fowlpox_81.png",
+      "all_probabilities": {
+        "Coccidiosis": 0.01,
+        "Fowl Pox": 98.44,
+        "Healthy": 1.1,
+        "Newcastle Disease": 0.14,
+        "Salmonella": 0.31
+      }
+    },
+    {
+      "gt_class": "Healthy",
+      "pred_class": "Healthy",
+      "confidence": 92.64,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Healthy\\healthy.1343.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Healthy_gt__Healthy_pred__correct__healthy.1343.png",
+      "all_probabilities": {
+        "Coccidiosis": 0.33,
+        "Fowl Pox": 0.99,
+        "Healthy": 92.64,
+        "Newcastle Disease": 5.14,
+        "Salmonella": 0.89
+      }
+    },
+    {
+      "gt_class": "Healthy",
+      "pred_class": "Healthy",
+      "confidence": 90.8,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Healthy\\healthy.1383.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Healthy_gt__Healthy_pred__correct__healthy.1383.png",
+      "all_probabilities": {
+        "Coccidiosis": 0.12,
+        "Fowl Pox": 0.38,
+        "Healthy": 90.8,
+        "Newcastle Disease": 1.98,
+        "Salmonella": 6.7
+      }
+    },
+    {
+      "gt_class": "Newcastle Disease",
+      "pred_class": "Newcastle Disease",
+      "confidence": 66.83,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Newcastle Disease\\ncd.153.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Newcastle_Disease_gt__Newcastle_Disease_pred__correct__ncd.153.png",
+      "all_probabilities": {
+        "Coccidiosis": 0.0,
+        "Fowl Pox": 0.02,
+        "Healthy": 29.47,
+        "Newcastle Disease": 66.83,
+        "Salmonella": 3.69
+      }
+    },
+    {
+      "gt_class": "Newcastle Disease",
+      "pred_class": "Fowl Pox",
+      "confidence": 52.95,
+      "correct": false,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Newcastle Disease\\ncd.340.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Newcastle_Disease_gt__Fowl_Pox_pred__wrong__ncd.340.png",
+      "all_probabilities": {
+        "Coccidiosis": 7.69,
+        "Fowl Pox": 52.95,
+        "Healthy": 3.14,
+        "Newcastle Disease": 2.41,
+        "Salmonella": 33.79
+      }
+    },
+    {
+      "gt_class": "Salmonella",
+      "pred_class": "Salmonella",
+      "confidence": 94.69,
+      "correct": true,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Salmonella\\salmo.1053.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Salmonella_gt__Salmonella_pred__correct__salmo.1053.png",
+      "all_probabilities": {
+        "Coccidiosis": 3.14,
+        "Fowl Pox": 0.36,
+        "Healthy": 1.46,
+        "Newcastle Disease": 0.35,
+        "Salmonella": 94.69
+      }
+    },
+    {
+      "gt_class": "Salmonella",
+      "pred_class": "Healthy",
+      "confidence": 55.47,
+      "correct": false,
+      "target_layer": "out_relu",
+      "source_image": "test_dataset\\Salmonella\\salmo.1335.jpg",
+      "output_figure": "research_results/grad_cam_examples\\Salmonella_gt__Healthy_pred__wrong__salmo.1335.png",
+      "all_probabilities": {
+        "Coccidiosis": 0.17,
+        "Fowl Pox": 1.32,
+        "Healthy": 55.47,
+        "Newcastle Disease": 27.01,
+        "Salmonella": 16.03
+      }
+    }
+  ]
+}

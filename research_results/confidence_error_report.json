@@ -1,0 +1,152 @@
+{
+  "model": "model/poultry_disease_model.keras",
+  "output_type": "softmax_probabilities",
+  "output_sum_check": 1.0,
+  "caution": "High confidence does NOT guarantee correctness.",
+  "total_test_samples": 242,
+  "correct": 216,
+  "wrong": 26,
+  "overall_accuracy_pct": 89.26,
+  "confidence_correct": {
+    "mean": 91.63,
+    "median": 97.54,
+    "min": 40.8,
+    "max": 99.99
+  },
+  "confidence_wrong": {
+    "mean": 60.81,
+    "median": 56.41,
+    "min": 29.9,
+    "max": 94.4
+  },
+  "per_class_confidence": {
+    "Coccidiosis": {
+      "n": 56,
+      "correct": 54,
+      "mean_confidence": 93.14,
+      "median_confidence": 99.08,
+      "min_confidence": 49.42,
+      "max_confidence": 99.99
+    },
+    "Fowl Pox": {
+      "n": 28,
+      "correct": 28,
+      "mean_confidence": 97.75,
+      "median_confidence": 99.76,
+      "min_confidence": 74.82,
+      "max_confidence": 99.99
+    },
+    "Healthy": {
+      "n": 60,
+      "correct": 55,
+      "mean_confidence": 86.61,
+      "median_confidence": 95.45,
+      "min_confidence": 40.8,
+      "max_confidence": 99.94
+    },
+    "Newcastle Disease": {
+      "n": 38,
+      "correct": 31,
+      "mean_confidence": 79.09,
+      "median_confidence": 87.34,
+      "min_confidence": 29.9,
+      "max_confidence": 99.73
+    },
+    "Salmonella": {
+      "n": 60,
+      "correct": 48,
+      "mean_confidence": 86.98,
+      "median_confidence": 93.78,
+      "min_confidence": 50.06,
+      "max_confidence": 99.96
+    }
+  },
+  "high_confidence_errors_80pct_plus": 5,
+  "high_confidence_error_samples": [
+    {
+      "image": "test_dataset\\Healthy\\healthy.1228.jpg",
+      "gt_class": "Healthy",
+      "gt_index": 2,
+      "pred_class": "Salmonella",
+      "pred_index": 4,
+      "confidence_pct": 89.65,
+      "correct": false,
+      "all_probs": {
+        "Coccidiosis": 0.24,
+        "Fowl Pox": 0.15,
+        "Healthy": 9.5,
+        "Newcastle Disease": 0.47,
+        "Salmonella": 89.65
+      }
+    },
+    {
+      "image": "test_dataset\\Salmonella\\salmo.1016.jpg",
+      "gt_class": "Salmonella",
+      "gt_index": 4,
+      "pred_class": "Healthy",
+      "pred_index": 2,
+      "confidence_pct": 88.97,
+      "correct": false,
+      "all_probs": {
+        "Coccidiosis": 0.35,
+        "Fowl Pox": 0.03,
+        "Healthy": 88.97,
+        "Newcastle Disease": 0.88,
+        "Salmonella": 9.77
+      }
+    },
+    {
+      "image": "test_dataset\\Salmonella\\salmo.1117.jpg",
+      "gt_class": "Salmonella",
+      "gt_index": 4,
+      "pred_class": "Healthy",
+      "pred_index": 2,
+      "confidence_pct": 80.03,
+      "correct": false,
+      "all_probs": {
+        "Coccidiosis": 0.03,
+        "Fowl Pox": 0.16,
+        "Healthy": 80.03,
+        "Newcastle Disease": 1.0,
+        "Salmonella": 18.78
+      }
+    },
+    {
+      "image": "test_dataset\\Salmonella\\salmo.1257.jpg",
+      "gt_class": "Salmonella",
+      "gt_index": 4,
+      "pred_class": "Healthy",
+      "pred_index": 2,
+      "confidence_pct": 94.4,
+      "correct": false,
+      "all_probs": {
+        "Coccidiosis": 0.05,
+        "Fowl Pox": 0.04,
+        "Healthy": 94.4,
+        "Newcastle Disease": 3.15,
+        "Salmonella": 2.36
+      }
+    },
+    {
+      "image": "test_dataset\\Salmonella\\salmo.1304.jpg",
+      "gt_class": "Salmonella",
+      "gt_index": 4,
+      "pred_class": "Healthy",
+      "pred_index": 2,
+      "confidence_pct": 90.09,
+      "correct": false,
+      "all_probs": {
+        "Coccidiosis": 0.03,
+        "Fowl Pox": 0.04,
+        "Healthy": 90.09,
+        "Newcastle Disease": 6.45,
+        "Salmonella": 3.4
+      }
+    }
+  ],
+  "calibration": {
+    "ece_10_bins": 0.041,
+    "brier_score_multiclass": 0.1428,
+    "note": "ECE and Brier computed on test set. No thresholds adjusted from these results."
+  }
+}
