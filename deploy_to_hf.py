@@ -58,17 +58,24 @@ def main():
         print("Please ensure your token is valid and has 'write' permissions.")
         sys.exit(1)
 
+    repo_id = os.environ.get("HF_SPACE_ID") or f"{username}/poultryscan-ai"
+    public_url = f"https://{repo_id.replace('/', '-').lower()}.hf.space"
+    embed_url = f"https://huggingface.co/spaces/{repo_id}"
+    print(f"Target Space:     {repo_id}")
+    print(f"Permanent URL:    {public_url}")
+    print(f"HuggingFace View: {embed_url}")
+
     # 2. Create or verify Space
-    print(f"\n[Step 1] Ensuring Space '{REPO_ID}' exists with Docker SDK...")
+    print(f"\n[Step 1] Ensuring Space '{repo_id}' exists with Docker SDK...")
     try:
         api.create_repo(
-            repo_id=REPO_ID,
+            repo_id=repo_id,
             repo_type="space",
             space_sdk="docker",
             exist_ok=True,
             private=False
         )
-        print(f"  [OK] Space '{REPO_ID}' is ready.")
+        print(f"  [OK] Space '{repo_id}' is ready.")
     except Exception as exc:
         print(f"  Note while checking space: {exc}")
 
@@ -112,7 +119,7 @@ def main():
     try:
         commit_info = api.upload_folder(
             folder_path=".",
-            repo_id=REPO_ID,
+            repo_id=repo_id,
             repo_type="space",
             ignore_patterns=ignore_list,
             commit_message="Deploy PoultryScan AI v2.1 production Docker application"
@@ -131,7 +138,7 @@ def main():
     max_checks = 60
     for i in range(max_checks):
         try:
-            runtime = api.get_space_runtime(repo_id=REPO_ID)
+            runtime = api.get_space_runtime(repo_id=repo_id)
             stage = runtime.stage
             hardware = runtime.hardware or "cpu-basic"
             print(f"  [{i+1}/{max_checks}] Status: {stage} (Hardware: {hardware})")
@@ -143,7 +150,7 @@ def main():
                 break
             elif stage in ("BUILD_ERROR", "RUNTIME_ERROR"):
                 print(f"\n[ALERT] Build/Runtime encountered an issue: {stage}")
-                print(f"Check build logs at: {EMBED_URL}")
+                print(f"Check build logs at: {embed_url}")
                 break
         except Exception as exc:
             print(f"  Checking status... ({exc})")
@@ -151,21 +158,21 @@ def main():
         time.sleep(10)
 
     # 5. Live Health Check
-    print(f"\n[Step 4] Testing live HTTP endpoint at {PUBLIC_URL}...")
+    print(f"\n[Step 4] Testing live HTTP endpoint at {public_url}...")
     try:
         req = urllib.request.Request(
-            f"{PUBLIC_URL}/",
+            f"{public_url}/",
             headers={"User-Agent": "PoultryScan-Verifier/1.0"}
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             code = resp.getcode()
             print(f"  [PASSED] HTTP GET / returned status code: {code}")
             print(f"\n  Website is fully operational and publicly accessible!")
-            print(f"  Direct Link:  {PUBLIC_URL}")
-            print(f"  Space Link:   {EMBED_URL}")
+            print(f"  Direct Link:  {public_url}")
+            print(f"  Space Link:   {embed_url}")
     except Exception as exc:
         print(f"  Status check note: {exc}")
-        print(f"  If the container is still finishing cold start, please open {PUBLIC_URL} in your browser in ~1-2 minutes.")
+        print(f"  If the container is still finishing cold start, please open {public_url} in your browser in ~1-2 minutes.")
 
 if __name__ == "__main__":
     main()

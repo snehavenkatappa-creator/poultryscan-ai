@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: poultryscan-ai
+    env: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHONUNBUFFERED
+        value: "1"

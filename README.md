@@ -2,7 +2,7 @@
 title: PoultryScan AI
 emoji: 🐔
 colorFrom: green
-colorTo: emerald
+colorTo: green
 sdk: docker
 pinned: false
 app_port: 7860
