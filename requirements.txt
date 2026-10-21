@@ -16,7 +16,7 @@ numpy==1.26.4
 
 # Deep learning — TensorFlow / Keras (CPU, lightweight)
 tensorflow-cpu==2.16.2
-keras==3.5.0
+keras>=3.14.0
 
 # Machine-learning utilities
 scikit-learn==1.5.2

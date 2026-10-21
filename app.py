@@ -191,14 +191,19 @@ def resolve_model_path():
     return MODEL_PATH
 
 
+_last_model_load_error = None
+
+
 def load_trained_model():
     """Load the trained .keras model safely and cache in app config.
 
     Validates model existence, input shape, and output neurons against CURRENT_CLASSES.
     Avoids mock/fabricated predictions.
     """
+    global _last_model_load_error
     actual_path = resolve_model_path()
     if not os.path.exists(actual_path):
+        _last_model_load_error = f"Model file not found at: {actual_path}"
         logger.error("Model file not found at expected path: %s (checked candidate paths)", actual_path)
         return None
 
@@ -226,6 +231,7 @@ def load_trained_model():
         if test_out is None or len(test_out[0]) != output_dim:
             raise RuntimeError("Inference test returned unexpected output shape.")
 
+        _last_model_load_error = None
         logger.info(
             "Trained model loaded and inference-tested successfully from %s (Output neurons: %d)",
             actual_path, output_dim
@@ -233,6 +239,7 @@ def load_trained_model():
         return model
 
     except Exception as exc:
+        _last_model_load_error = f"{type(exc).__name__}: {str(exc)}"
         logger.exception("Failed to load model from %s: %s", actual_path, exc)
         return None
 
@@ -1064,14 +1071,27 @@ def health():
         "service": "PoultryScan AI Backend",
         "model_status": model_status,
         "model_file_exists": model_file_exists,
+        "model_resolved_path": resolve_model_path(),
         "inference_verified": inference_ok,
         "classes": classes,
         "num_classes": len(classes),
         "database_connected": os.path.exists(DB_PATH),
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
+    if _last_model_load_error:
+        payload["model_load_error"] = _last_model_load_error
     if inference_error:
         payload["inference_error"] = inference_error
+    try:
+        import keras
+        payload["keras_version"] = getattr(keras, "__version__", "unknown")
+    except Exception:
+        pass
+    try:
+        import tensorflow as tf
+        payload["tf_version"] = getattr(tf, "__version__", "unknown")
+    except Exception:
+        pass
     return jsonify(payload), http_status
 
 
