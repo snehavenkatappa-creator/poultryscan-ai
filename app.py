@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import sqlite3
+import threading
 import uuid
 from datetime import datetime
 
@@ -125,11 +126,27 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 # ==============================================================================
 # Dynamic Class Mapping & Model Loading
 # ==============================================================================
+def resolve_class_indices_path():
+    """Resolve class_indices.json path across local development and cloud container environments."""
+    candidates = [
+        CLASS_INDICES_PATH,
+        os.path.join(BASE_DIR, "model", "class_indices.json"),
+        os.path.join(os.getcwd(), "model", "class_indices.json"),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "model", "class_indices.json")),
+        os.path.join("/app", "model", "class_indices.json"),
+    ]
+    for p in candidates:
+        if p and os.path.exists(p) and os.path.isfile(p):
+            return os.path.abspath(p)
+    return CLASS_INDICES_PATH
+
+
 def load_class_names():
     """Load exact class mapping from class_indices.json, falling back to diseases.py."""
-    if os.path.exists(CLASS_INDICES_PATH):
+    resolved_indices = resolve_class_indices_path()
+    if os.path.exists(resolved_indices):
         try:
-            with open(CLASS_INDICES_PATH, "r", encoding="utf-8") as f:
+            with open(resolved_indices, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     logger.info("Loaded %d class names from class_indices.json: %s", len(data), data)
@@ -147,26 +164,56 @@ CURRENT_CLASSES = load_class_names()
 app.config["CLASS_NAMES"] = CURRENT_CLASSES
 
 
+def resolve_model_path():
+    """Resolve the location of the trained 5-class MobileNetV2 model file across environments."""
+    candidates = [
+        MODEL_PATH,
+        os.path.join(BASE_DIR, "model", "poultry_disease_model.keras"),
+        os.path.join(os.getcwd(), "model", "poultry_disease_model.keras"),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "model", "poultry_disease_model.keras")),
+        os.path.join("/app", "model", "poultry_disease_model.keras"),
+        os.path.join(BASE_DIR, "model", "poultry_disease_model.h5"),
+    ]
+    for p in candidates:
+        if p and os.path.exists(p) and os.path.isfile(p):
+            return os.path.abspath(p)
+
+    # Secondary fallback: scan model directory in project root
+    for search_root in [BASE_DIR, os.getcwd(), os.path.dirname(os.path.abspath(__file__)), "/app"]:
+        model_dir = os.path.join(search_root, "model")
+        if os.path.isdir(model_dir):
+            for fname in os.listdir(model_dir):
+                if fname.endswith(".keras") and "backup" not in fname:
+                    found = os.path.abspath(os.path.join(model_dir, fname))
+                    logger.info("Discovered trained model via directory search: %s", found)
+                    return found
+
+    return MODEL_PATH
+
+
 def load_trained_model():
     """Load the trained .keras model safely and cache in app config.
 
     Validates model existence, input shape, and output neurons against CURRENT_CLASSES.
     Avoids mock/fabricated predictions.
     """
-    if not os.path.exists(MODEL_PATH):
-        logger.error("Model file not found at expected path: %s", MODEL_PATH)
+    actual_path = resolve_model_path()
+    if not os.path.exists(actual_path):
+        logger.error("Model file not found at expected path: %s (checked candidate paths)", actual_path)
         return None
 
     try:
         try:
             import keras
-            model = keras.models.load_model(MODEL_PATH, compile=False)
-        except Exception:
+            model = keras.models.load_model(actual_path, compile=False)
+        except Exception as exc1:
+            logger.info("keras.models.load_model fallback: %s. Trying tensorflow.keras.models...", exc1)
             from tensorflow.keras.models import load_model
-            model = load_model(MODEL_PATH, compile=False)
+            model = load_model(actual_path, compile=False)
 
         output_dim = model.output_shape[-1]
-        expected_dim = len(CURRENT_CLASSES)
+        classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
+        expected_dim = len(classes)
         if output_dim != expected_dim:
             logger.warning(
                 "Model output dimension (%d) does not match CURRENT_CLASSES (%d). Using available neurons.",
@@ -180,14 +227,36 @@ def load_trained_model():
             raise RuntimeError("Inference test returned unexpected output shape.")
 
         logger.info(
-            "Trained model loaded and inference-tested from %s (Output neurons: %d)",
-            MODEL_PATH, output_dim
+            "Trained model loaded and inference-tested successfully from %s (Output neurons: %d)",
+            actual_path, output_dim
         )
         return model
 
     except Exception as exc:
-        logger.exception("Failed to load model from %s: %s", MODEL_PATH, exc)
+        logger.exception("Failed to load model from %s: %s", actual_path, exc)
         return None
+
+
+_model_lock = threading.Lock()
+
+
+def get_model():
+    """Thread-safe on-demand loader that guarantees model access across requests.
+
+    If app.config['MODEL'] is None, attempts to load the model dynamically
+    so the app never falsely falls back to 'untrained/unavailable' when the
+    model file exists.
+    """
+    model = app.config.get("MODEL")
+    if model is None:
+        with _model_lock:
+            model = app.config.get("MODEL")
+            if model is None:
+                logger.info("Attempting on-demand model load...")
+                model = load_trained_model()
+                if model is not None:
+                    app.config["MODEL"] = model
+    return model
 
 
 # Cache model at application startup
@@ -285,7 +354,7 @@ def normalize_label(label):
 
 def predict_image(image_path, image_type="full_body"):
     """Run model inference on the preprocessed image with uncertainty checks."""
-    model = app.config.get("MODEL")
+    model = get_model()
     if model is None:
         raise RuntimeError("Trained model is not loaded. Please ensure model/poultry_disease_model.keras is present.")
 
@@ -393,7 +462,8 @@ def index():
     total = db.execute("SELECT COUNT(*) c FROM predictions").fetchone()["c"]
     healthy = db.execute("SELECT COUNT(*) c FROM predictions WHERE disease = 'Healthy'").fetchone()["c"]
     diseased = total - healthy
-    model_loaded = (app.config.get("MODEL") is not None)
+    model = get_model()
+    model_loaded = (model is not None)
     classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
 
     # Load verified evaluation summary — never fabricate metrics
@@ -440,7 +510,8 @@ def dashboard():
 
     healthy = counts.get("Healthy", 0)
     diseased = total - healthy
-    model_loaded = (app.config.get("MODEL") is not None)
+    model = get_model()
+    model_loaded = (model is not None)
 
     flock_count = db.execute("SELECT COUNT(*) c FROM predictions WHERE scan_mode = 'flock'").fetchone()["c"]
     single_count = total - flock_count
@@ -474,7 +545,8 @@ def dashboard():
 def upload():
     """Disease detection page with drag-and-drop upload and file picker."""
     classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
-    model_loaded = (app.config.get("MODEL") is not None)
+    model = get_model()
+    model_loaded = (model is not None)
 
     if request.method == "GET":
         selected_type = request.args.get("type", "full_body")
@@ -501,7 +573,10 @@ def upload():
     if image_type not in VALID_IMAGE_TYPES:
         image_type = "full_body"
 
-    # 3. Model readiness check
+    # 3. Model readiness check (attempt on-demand load if not yet initialized)
+    if not model_loaded:
+        model = get_model()
+        model_loaded = (model is not None)
     if not model_loaded:
         flash(
             "Prediction service unavailable: Trained model is not loaded. "
@@ -519,7 +594,7 @@ def upload():
         return redirect(url_for("upload"))
 
     # 5. Validate suitable poultry image before running disease diagnosis
-    model = app.config.get("MODEL")
+    model = get_model()
     is_poultry, validation_error, val_details = validate_poultry_image(
         file_path, image_type=image_type, disease_model=model
     )
@@ -613,7 +688,7 @@ def result(pred_id):
 def multi_chicken():
     """Multi-chicken flock detection, bounding box annotation, and crop health screening."""
     classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
-    model = app.config.get("MODEL")
+    model = get_model()
     model_loaded = (model is not None)
 
     if request.method == "GET":
@@ -632,6 +707,9 @@ def multi_chicken():
         return redirect(url_for("multi_chicken"))
 
     # 2. Model readiness check
+    if not model_loaded:
+        model = get_model()
+        model_loaded = (model is not None)
     if not model_loaded:
         flash("Prediction service unavailable: Trained model is not loaded.", "error")
         return redirect(url_for("multi_chicken"))
@@ -894,7 +972,8 @@ def clear_history():
 @app.route("/about")
 def about():
     """About project page explaining AI methodology, transfer learning, and limitations."""
-    model_loaded = (app.config.get("MODEL") is not None)
+    model = get_model()
+    model_loaded = (model is not None)
     classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
 
     eval_data = None
@@ -933,7 +1012,8 @@ def about():
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
     """Contact & feedback section for farm inquiries and veterinary collaboration."""
-    model_loaded = (app.config.get("MODEL") is not None)
+    model = get_model()
+    model_loaded = (model is not None)
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip()
@@ -955,9 +1035,9 @@ def health():
     Performs a real inference test (blank tensor) so the status reflects
     actual model usability, not just file presence.
     """
-    model = app.config.get("MODEL")
+    model = get_model()
     classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
-    model_file_exists = os.path.exists(MODEL_PATH)
+    model_file_exists = os.path.exists(resolve_model_path())
     inference_ok = False
     inference_error = None
 
@@ -998,7 +1078,7 @@ def health():
 @app.route("/api/model-status")
 def api_model_status():
     """Lightweight JSON endpoint polled by the sidebar for live model status."""
-    model = app.config.get("MODEL")
+    model = get_model()
     classes = app.config.get("CLASS_NAMES", CURRENT_CLASSES)
 
     # Load the verified evaluation summary for the accuracy figure
@@ -1047,7 +1127,8 @@ def api_model_status():
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
     """REST API endpoint for real-time model predictions on uploaded images."""
-    if app.config.get("MODEL") is None:
+    model = get_model()
+    if model is None:
         return jsonify({"success": False, "error": "Model is not loaded on server."}), 503
 
     if "image" not in request.files:
@@ -1066,7 +1147,7 @@ def api_predict():
         saved_filename, file_path = save_secure_upload(uploaded_file)
         
         # Validate suitable poultry image before inference
-        model = app.config.get("MODEL")
+        model = get_model()
         is_poultry, validation_error, val_details = validate_poultry_image(
             file_path, image_type=image_type, disease_model=model
         )
@@ -1109,7 +1190,7 @@ def api_predict():
 @app.route("/api/flock-predict", methods=["POST"])
 def api_flock_predict():
     """REST API endpoint for multi-chicken flock detection and classification."""
-    model = app.config.get("MODEL")
+    model = get_model()
     if model is None:
         return jsonify({"success": False, "error": "Model is not loaded on server."}), 503
 
@@ -1209,9 +1290,9 @@ def page_not_found(_error):
 
 
 if __name__ == "__main__":
-    # Default port: 7860 for HF Spaces, 5000 for local dev.
+    # Default port: 5000 for local dev, or environment PORT (e.g. 7860 on HF Spaces / Render).
     # Set debug=False for production safety; use_reloader=False prevents
     # double-process issues when running directly with python app.py.
-    port = int(os.environ.get("PORT", 7860))
+    port = int(os.environ.get("PORT", 5000))
     debug_mode = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "yes")
     app.run(debug=debug_mode, host="0.0.0.0", port=port, use_reloader=False)
