@@ -9,6 +9,7 @@ Analyzes:
   - Reliability diagram (calibration curve)
   - Expected Calibration Error (ECE)
   - Brier Score (probabilistic accuracy)
+  - Confusion matrix and overall test accuracy
 
 Outputs saved to: research_results/
 
@@ -17,15 +18,22 @@ IMPORTANT:
   - High confidence does NOT guarantee correctness.
   - Calibration curves are computed on the TEST set only (not used for threshold fitting).
   - No thresholds are adjusted based on this analysis.
+  - Preprocessing can be set to 'tf' (TensorFlow native decode/resize, matching evaluate_model.py
+    and train_model.py -> 91.32%, 221/242 correct) or 'pil' (Pillow bilinear resize -> 89.26%,
+    216/242 correct). Sub-pixel differences in borderline images account for the 5-prediction difference.
 
 Usage:
     python confidence_error_analysis.py \\
         --model model/poultry_disease_model.keras \\
         --test-dir test_dataset \\
+        --train-dir dataset \\
+        --preprocess tf \\
+        --exclude-leakage \\
         --output research_results
 """
 
 import argparse
+import hashlib
 import json
 import os
 import numpy as np
@@ -34,10 +42,48 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from PIL import Image
 import tensorflow as tf
-from sklearn.metrics import brier_score_loss
+from sklearn.metrics import brier_score_loss, confusion_matrix
 from sklearn.preprocessing import label_binarize
 
 IMG_SIZE = (224, 224)
+
+
+def compute_file_hash(path):
+    """Compute SHA-256 hash for byte-level duplicate detection."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def find_train_duplicates(train_dir, test_dir):
+    """Identify images in test_dir that duplicate images in train_dir."""
+    if not train_dir or not os.path.exists(train_dir) or not os.path.exists(test_dir):
+        return set()
+
+    valid_exts = {".jpg", ".jpeg", ".png", ".webp"}
+    train_hashes = set()
+    for root, _, files in os.walk(train_dir):
+        for f in files:
+            if os.path.splitext(f)[1].lower() in valid_exts:
+                try:
+                    train_hashes.add(compute_file_hash(os.path.join(root, f)))
+                except Exception:
+                    pass
+
+    duplicates = set()
+    for root, _, files in os.walk(test_dir):
+        for f in files:
+            if os.path.splitext(f)[1].lower() in valid_exts:
+                p = os.path.join(root, f)
+                try:
+                    if compute_file_hash(p) in train_hashes:
+                        duplicates.add(os.path.abspath(p))
+                except Exception:
+                    pass
+
+    return duplicates
 
 
 def load_class_indices(model_path):
@@ -49,11 +95,21 @@ def load_class_indices(model_path):
     return ["Coccidiosis", "Fowl Pox", "Healthy", "Newcastle Disease", "Salmonella"]
 
 
-def preprocess(image_path):
+def preprocess_pil(image_path):
+    """Pillow bilinear resize matching runtime inference in app.py."""
     img = Image.open(image_path).convert("RGB")
     img = img.resize(IMG_SIZE, Image.Resampling.BILINEAR)
     arr = np.array(img, dtype=np.float32) / 255.0
     return np.expand_dims(arr, 0)
+
+
+def preprocess_tf(image_path):
+    """TensorFlow native decode and resize matching evaluate_model.py and train_model.py."""
+    raw = tf.io.read_file(image_path)
+    img = tf.io.decode_image(raw, channels=3, expand_animations=False)
+    img = tf.image.resize(img, IMG_SIZE, method="bilinear")
+    arr = tf.expand_dims(tf.cast(img, tf.float32) / 255.0, 0)
+    return arr
 
 
 def compute_ece(y_true, y_prob_pred, n_bins=10):
@@ -77,9 +133,12 @@ def compute_ece(y_true, y_prob_pred, n_bins=10):
     return ece, bin_boundaries, confidences, accuracies
 
 
-def run_analysis(model_path, test_dir, output_dir):
+def run_analysis(model_path, test_dir, output_dir, preprocess_method="tf", train_dir="dataset", exclude_leakage=True):
     print("=" * 68)
     print("POULTRYSCAN AI — CONFIDENCE & ERROR ANALYSIS")
+    print(f"Preprocessing Method: {preprocess_method.upper()} "
+          f"({'TensorFlow native' if preprocess_method == 'tf' else 'Pillow runtime'})")
+    print(f"Exclude Training Leakage Duplicates: {exclude_leakage}")
     print("=" * 68)
 
     model = tf.keras.models.load_model(model_path, compile=False)
@@ -87,6 +146,16 @@ def run_analysis(model_path, test_dir, output_dir):
     num_classes = len(class_names)
     valid_exts = {".jpg", ".jpeg", ".png", ".webp"}
     os.makedirs(output_dir, exist_ok=True)
+
+    # Check for train duplicates if requested
+    duplicates = set()
+    if exclude_leakage and train_dir and os.path.exists(train_dir):
+        print(f"\nScanning for cross-split duplicate images against '{train_dir}'...")
+        duplicates = find_train_duplicates(train_dir, test_dir)
+        print(f"  Found {len(duplicates)} duplicate image(s) across splits; isolating clean held-out set.")
+
+    # Select preprocessing function
+    preprocess_fn = preprocess_tf if preprocess_method == "tf" else preprocess_pil
 
     # Verify output type
     dummy = np.zeros((1, 224, 224, 3), dtype=np.float32)
@@ -101,17 +170,24 @@ def run_analysis(model_path, test_dir, output_dir):
     all_y_true, all_y_pred, all_probs = [], [], []
     error_samples = []     # high-confidence wrong predictions
     all_samples = []
+    skipped_duplicates = []
 
     for cls_index, cls_name in enumerate(class_names):
         cls_dir = os.path.join(test_dir, cls_name)
         if not os.path.isdir(cls_dir):
             continue
-        images = [f for f in os.listdir(cls_dir)
-                  if os.path.splitext(f)[1].lower() in valid_exts]
+        images = sorted([f for f in os.listdir(cls_dir)
+                         if os.path.splitext(f)[1].lower() in valid_exts])
         for img_file in images:
             img_path = os.path.join(cls_dir, img_file)
+            abs_img_path = os.path.abspath(img_path)
+
+            if abs_img_path in duplicates:
+                skipped_duplicates.append(img_path)
+                continue
+
             try:
-                inp = preprocess(img_path)
+                inp = preprocess_fn(img_path)
                 probs = model.predict(inp, verbose=0)[0]
                 pred_index = int(np.argmax(probs))
                 confidence = float(probs[pred_index])
@@ -146,9 +222,13 @@ def run_analysis(model_path, test_dir, output_dir):
     correct_mask = (y_true == y_pred)
     wrong_mask = ~correct_mask
 
-    print(f"\nTotal test samples processed: {total}")
+    cm = confusion_matrix(y_true, y_pred, labels=list(range(num_classes)))
+
+    print(f"\nTotal test samples processed: {total} (Excluded {len(skipped_duplicates)} duplicates)")
     print(f"Correct: {correct_mask.sum()}  |  Wrong: {wrong_mask.sum()}")
-    print(f"Overall accuracy: {correct_mask.mean() * 100:.2f}%")
+    print(f"Overall accuracy: {correct_mask.mean() * 100:.2f}% ({correct_mask.sum()}/{total})")
+    print("\nConfusion Matrix (Rows = Actual, Columns = Predicted):")
+    print(cm)
 
     # --- Confidence distributions ---
     conf_correct = np.max(y_probs[correct_mask], axis=1) * 100
@@ -160,13 +240,13 @@ def run_analysis(model_path, test_dir, output_dir):
     if len(conf_wrong) > 0:
         print(f"Confidence statistics (wrong predictions, n={len(conf_wrong)}):")
         print(f"  Mean: {conf_wrong.mean():.1f}%  Median: {np.median(conf_wrong):.1f}%  "
-              f"Min: {conf_wrong.min():.1f}%  Max: {conf_wrong.max():.1f}%")
+          f"Min: {conf_wrong.min():.1f}%  Max: {conf_wrong.max():.1f}%")
 
     # High-confidence errors (>=80%)
     print(f"\nHigh-confidence wrong predictions (confidence >= 80%): {len(error_samples)}")
     for e in error_samples:
         print(f"  GT: {e['gt_class']:20s} -> Pred: {e['pred_class']:20s} "
-              f"({e['confidence_pct']:.1f}%)")
+              f"({e['confidence_pct']:.1f}%) | {os.path.basename(e['image'])}")
 
     # --- Per-class confidence ---
     print("\nPer-class confidence statistics:")
@@ -184,8 +264,8 @@ def run_analysis(model_path, test_dir, output_dir):
             "min_confidence": round(float(cls_confs.min()), 2),
             "max_confidence": round(float(cls_confs.max()), 2)
         }
-        print(f"  {cls_name:20s}: mean={cls_confs.mean():.1f}%  "
-              f"min={cls_confs.min():.1f}%  max={cls_confs.max():.1f}%")
+        print(f"  {cls_name:20s}: n={mask.sum()} correct={(y_pred[mask] == idx).sum()} "
+              f"mean={cls_confs.mean():.1f}%  min={cls_confs.min():.1f}%  max={cls_confs.max():.1f}%")
 
     # --- Calibration metrics ---
     ece, bin_bounds, confidences, accuracies = compute_ece(y_true, y_probs, n_bins=10)
@@ -224,7 +304,7 @@ def run_analysis(model_path, test_dir, output_dir):
     ax.set_ylabel("Observed Accuracy", fontsize=12)
     ax.set_title(
         f"Reliability Diagram — PoultryScan AI 5-Class MobileNetV2\n"
-        f"ECE = {ece:.4f}  |  Brier = {brier:.4f}  |  n = {total} test samples",
+        f"ECE = {ece:.4f}  |  Brier = {brier:.4f}  |  n = {total} test samples ({preprocess_method.upper()})",
         fontsize=11
     )
     ax.set_xlim(0, 1)
@@ -247,7 +327,7 @@ def run_analysis(model_path, test_dir, output_dir):
                  label=f"Wrong (n={len(conf_wrong)})", density=True)
     ax2.set_xlabel("Softmax Confidence (%)", fontsize=12)
     ax2.set_ylabel("Density", fontsize=12)
-    ax2.set_title("Confidence Distribution: Correct vs. Wrong Predictions", fontsize=12)
+    ax2.set_title(f"Confidence Distribution: Correct vs. Wrong Predictions ({preprocess_method.upper()})", fontsize=12)
     ax2.legend(fontsize=10)
     ax2.grid(alpha=0.3)
     fig2.tight_layout()
@@ -259,13 +339,23 @@ def run_analysis(model_path, test_dir, output_dir):
     # --- Save report JSON ---
     report = {
         "model": model_path,
+        "preprocessing_pipeline": preprocess_method,
+        "preprocessing_description": (
+            "TensorFlow native decode/resize (tf.image.resize bilinear), matching evaluate_model.py and train_model.py"
+            if preprocess_method == "tf"
+            else "Pillow bilinear resize (Image.Resampling.BILINEAR), matching runtime app.py"
+        ),
         "output_type": output_type,
         "output_sum_check": round(output_sum, 4),
         "caution": "High confidence does NOT guarantee correctness.",
         "total_test_samples": total,
+        "excluded_duplicates_count": len(skipped_duplicates),
+        "excluded_duplicate_samples": skipped_duplicates,
         "correct": int(correct_mask.sum()),
         "wrong": int(wrong_mask.sum()),
         "overall_accuracy_pct": round(correct_mask.mean() * 100, 2),
+        "confusion_matrix": cm.tolist(),
+        "classes": class_names,
         "confidence_correct": {
             "mean": round(float(conf_correct.mean()), 2),
             "median": round(float(np.median(conf_correct)), 2),
@@ -299,9 +389,18 @@ def main():
     parser = argparse.ArgumentParser(description="Confidence and error analysis for PoultryScan AI.")
     parser.add_argument("--model", default="model/poultry_disease_model.keras")
     parser.add_argument("--test-dir", default="test_dataset")
+    parser.add_argument("--train-dir", default="dataset", help="Path to training set to check cross-split duplicates.")
+    parser.add_argument("--preprocess", choices=["tf", "pil"], default="tf",
+                        help="Preprocessing method: 'tf' (TensorFlow decode/resize, matches evaluate_model.py) or 'pil' (Pillow resize).")
+    parser.add_argument("--exclude-leakage", dest="exclude_leakage", action="store_true", default=True,
+                        help="Exclude training duplicates from test set (evaluates clean 242-image set).")
+    parser.add_argument("--no-exclude-leakage", dest="exclude_leakage", action="store_false",
+                        help="Do not exclude training duplicates (evaluates all images in test_dir).")
     parser.add_argument("--output", default="research_results")
     args = parser.parse_args()
-    run_analysis(args.model, args.test_dir, args.output)
+    run_analysis(args.model, args.test_dir, args.output,
+                 preprocess_method=args.preprocess, train_dir=args.train_dir,
+                 exclude_leakage=args.exclude_leakage)
 
 
 if __name__ == "__main__":

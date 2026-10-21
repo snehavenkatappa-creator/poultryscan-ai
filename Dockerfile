@@ -1,6 +1,6 @@
 # ============================================================
 # PoultryScan AI — Production Dockerfile
-# Target: Hugging Face Spaces (Docker) — 16 GB RAM free tier
+# Target: Render Free Tier (512 MB RAM) / Cloud Containers
 # Base:   Python 3.11 slim (Debian bookworm)
 # ============================================================
 FROM python:3.11-slim
@@ -9,8 +9,12 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV KMP_DUPLICATE_LIB_OK=TRUE
-# Use CPU-only torch to avoid pulling CUDA dependencies (~5 GB extra)
-ENV TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+
+# Strict single-thread memory control for 512 MB RAM environments
+ENV TF_ENABLE_ONEDNN_OPTS=0
+ENV OMP_NUM_THREADS=1
+ENV TF_NUM_INTRAOP_THREADS=1
+ENV TF_NUM_INTEROP_THREADS=1
 
 WORKDIR /app
 
@@ -22,49 +26,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     libgomp1 \
-    build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# ── Install CPU-only PyTorch first (saves ~3 GB over the default CUDA wheel) ──
-# Pin versions that are known-compatible with torchvision 0.15.x on Python 3.11
-RUN pip install --no-cache-dir \
-    torch==2.3.1+cpu \
-    torchvision==0.18.1+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
-
-# ── Install remaining Python dependencies ──
+# Install lightweight Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Copy application source (model weights, templates, static, etc.) ──
+# Copy application source (model weights, templates, static, etc.)
 COPY . .
 
-# Create writable directories for uploads and SQLite database.
-# On HF Spaces, /data is a persistent volume — we symlink into it at runtime
-# via the entrypoint so uploads and DB survive container restarts.
+# Create writable directories for uploads and SQLite database
 RUN mkdir -p /app/uploads /app/database \
-    && chmod -R 777 /app/uploads /app/database \
-    && mkdir -p /data/uploads /data/database \
-    && chmod -R 777 /data
+    && chmod -R 777 /app/uploads /app/database
 
-# HF Spaces runs as user 1000 (non-root). Ensure all files are accessible.
+# Run as non-root user for security
 RUN useradd -m -u 1000 appuser \
-    && chown -R appuser:appuser /app /data
+    && chown -R appuser:appuser /app
 USER 1000
 
-# Hugging Face Spaces exposes port 7860 by default
-EXPOSE 7860
+# Expose Render default port (10000) or fallback
+EXPOSE 10000
 
-# Start with Gunicorn (production WSGI server).
-# 1 worker + 4 threads: keeps memory for TF + PyTorch under 2 GB peak.
-# Timeout 300 s covers cold-start model loading on first request.
+# Start with Gunicorn (1 worker + 2 threads, with max-requests memory recycling)
 CMD ["sh", "-c", \
      "gunicorn \
-      --bind 0.0.0.0:${PORT:-7860} \
+      --bind 0.0.0.0:${PORT:-10000} \
       --workers 1 \
-      --threads 4 \
-      --timeout 300 \
+      --threads 2 \
+      --timeout 180 \
+      --max-requests 100 \
+      --max-requests-jitter 20 \
       --keep-alive 5 \
       --log-level info \
       --access-logfile - \
